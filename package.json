@@ -12,7 +12,8 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "test:page": "python3 -m http.server 8080 --bind 127.0.0.1 --directory test-pages"
   },
   "dependencies": {
     "react": "^19.2.4",
