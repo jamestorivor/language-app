@@ -1,16 +1,13 @@
-function handleTextSelection(): void {
+function getSelectedText(): string {
   const selection: Selection | null = window.getSelection();
 
   if (selection) {
     const selectedText: string = selection.toString().trim();
     if (selectedText.length > 0) {
-      console.log(selectedText);
+      return selectedText;
     }
-  } else if (!selection) {
-    console.log("Nothing selected");
-  } else {
-    console.log("Error");
   }
+  return "";
 }
 
-export default handleTextSelection;
+export default getSelectedText;
