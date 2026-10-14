@@ -1,7 +1,10 @@
-div {
-  background-color: "white";
-  padding: "12px";
-  border-radius: "8px";
-  box-shadow: "0 2px 10px rgba(0,0,0,0.2)";
+.panel {
+  background-color: white;
+  padding: 0.2rem 0.8rem 0.4rem 0.8rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   z-index: 9999;
+  position: fixed;
+  max-width: 18rem;
+  overflow-y: scroll;
 }
