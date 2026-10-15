@@ -2,6 +2,7 @@ import { useLayoutEffect, useState } from "react";
 import handleTextSelection from "./page-text.ts";
 import "./Panel.css";
 import getPanelPosition from "./panel-position.ts";
+import RatingScale from "./RatingScale";
 
 export interface selectionData {
   selectedText: string;
@@ -28,7 +29,7 @@ function panelContent(
         }}
       >
         <p>{selectedText}</p>
-        <button>Save</button>
+        <RatingScale></RatingScale>
       </div>
     );
   }

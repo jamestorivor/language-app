@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import Panel from "./Panel.tsx";
+import "../../assets/tailwind.css";
 
 export default defineContentScript({
   matches: ["*://*.google.com/*", "http://localhost/*"],
