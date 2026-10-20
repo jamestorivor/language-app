@@ -7,7 +7,7 @@ client = TestClient(app)
 
 def test_parse_returns_grouped_words_with_lookup_forms_and_original_spans():
     text = "超えたからかもしれません。"
-    response = client.get("/jap/parse", params={"text": text})
+    response = client.post("/jap/parse", json={"text": text})
 
     assert response.status_code == 200
     groups = response.json()

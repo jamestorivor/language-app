@@ -19,12 +19,20 @@ async function requestParseJapanese(text: string, sendResponse: Function) {
   try {
     if (typeof text !== "string") {
       sendResponse({ ok: false, error: "Text must be a string" });
+      return;
     }
 
     const url = new URL("jap/parse", API_BASE_URL);
-    url.searchParams.set("text", text);
 
-    await fetch(url)
+    await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text: text,
+      }),
+    })
       .then((response) => {
         if (!response.ok) {
           throw new Error(`Backend response ${response.status}`);
@@ -35,7 +43,7 @@ async function requestParseJapanese(text: string, sendResponse: Function) {
       .then((tokens) => sendResponse({ ok: true, tokens }));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(message);
+    sendResponse({ ok: false, error: message });
   }
 }
 

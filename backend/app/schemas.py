@@ -1,6 +1,9 @@
 from pydantic import BaseModel
 from enum import StrEnum
 
+class ParseJapaneseRequest(BaseModel):
+    text : str
+
 class JapaneseTokenizedResponse(BaseModel):
     text : str
     dictionary_form : str
