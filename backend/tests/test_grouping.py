@@ -1,5 +1,5 @@
 import pytest
-from app.grouping import regroup_tokens, get_verb_group_length, join_tokens
+from app.grouping import regroup_tokens, find_group_end, join_tokens
 from app.parser import parse_japanese_text
 from app.schemas import JapaneseTokenizedResponse, TokenGroup, MajorPOS
 
@@ -15,7 +15,7 @@ from app.schemas import JapaneseTokenizedResponse, TokenGroup, MajorPOS
         ("食べませんでした", 5),
     ],
 )
-def test_get_verb_group_length(text, expected_length):
+def test_find_group_end(text, expected_length):
     tokens : list[JapaneseTokenizedResponse] = parse_japanese_text(text)
     start_idx = None
     for i, token in enumerate(tokens):
@@ -23,7 +23,7 @@ def test_get_verb_group_length(text, expected_length):
             start_idx = i
             break
     assert start_idx is not None, f"No verb found in {text!r}"
-    assert get_verb_group_length(tokens, start_idx) == expected_length
+    assert find_group_end(tokens, start_idx) == start_idx + expected_length
 
 @pytest.mark.parametrize(
     (
