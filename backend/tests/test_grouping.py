@@ -1,29 +1,39 @@
 import pytest
-from app.grouping import regroup_tokens, find_group_end, join_tokens
+from app.grouping import (
+    regroup_tokens, find_group_end, join_tokens, is_kamoshirenai_bridge,
+)
 from app.parser import parse_japanese_text
 from app.schemas import JapaneseTokenizedResponse, TokenGroup, MajorPOS
 
 @pytest.mark.parametrize(
-    "text, expected_length",
+    "text, expected_text",
     [
-        ("本を読みます。", 2),
-        ("社会人になりました。", 3),
-        ("肉を食べません。", 3),
-        ("今日は行かない。", 2),
-        ("昨日は行かなかった。", 3),
-        ("水を飲みたい。", 2),
-        ("食べませんでした", 5),
+        ("本を読みます。", "読みます"),
+        ("一万円を超えた。", "超えた"),
+        ("本を読んだ。", "読んだ"),
+        ("食べられませんでした。", "食べられませんでした"),
+        ("食べたくなかった。", "食べたくなかった"),
+        ("高くなかった。", "高くなかった"),
+        ("食べていました。", "食べていました"),
+        ("読んでしまった。", "読んでしまった"),
+        ("食べておく。", "食べておく"),
+        ("食べまし", "食べまし"),
+        ("食べて", "食べ"),
+        ("食べて いる", "食べ"),
+        ("食べて猫がいる", "食べ"),
+        ("超えたというニュース", "超えた"),
     ],
 )
-def test_find_group_end(text, expected_length):
-    tokens : list[JapaneseTokenizedResponse] = parse_japanese_text(text)
-    start_idx = None
-    for i, token in enumerate(tokens):
-        if token.part_of_speech[0] == MajorPOS.VERB:
-            start_idx = i
-            break
-    assert start_idx is not None, f"No verb found in {text!r}"
-    assert find_group_end(tokens, start_idx) == start_idx + expected_length
+def test_find_group_end(text, expected_text):
+    tokens = parse_japanese_text(text)
+    start = next(
+        i for i, token in enumerate(tokens)
+        if token.part_of_speech[0] in {MajorPOS.VERB, MajorPOS.ADJECTIVE}
+    )
+    end = find_group_end(tokens, start)
+
+    assert "".join(token.text for token in tokens[start:end]) == expected_text
+    assert 0 < end <= len(tokens)
 
 @pytest.mark.parametrize(
     (
@@ -128,6 +138,7 @@ def test_regroup_tokens_no_regroup():
         ("昨日は行かなかった。", ["昨日", "は", "行かなかった", "。"]),
         ("水を飲みたい。", ["水", "を", "飲みたい", "。"]),
         ("食べませんでした", ["食べませんでした"]),
+        ("ほんのわずか", ["ほんの", "わずか"]),
         ("", []),
     ],
 )
@@ -136,4 +147,45 @@ def test_regroup_tokens(text, expected_groups):
     groups : list[TokenGroup] = regroup_tokens(text, tokens)
 
     assert [group.text for group in groups] == expected_groups
+
+
+@pytest.mark.parametrize(
+    "text, expected_groups",
+    [
+        ("あったからかもしれません。", ["あった", "から", "かもしれません", "。"]),
+        ("学生かもしれません", ["学生", "かもしれません"]),
+        ("かもしれません", ["かもしれません"]),
+        ("かもしれなかった", ["かもしれなかった"]),
+        ("かもしれませんでした", ["かもしれませんでした"]),
+        ("かも知れない", ["かも知れない"]),
+        ("食べるかもしれません", ["食べるかもしれません"]),
+        ("高いかもしれない", ["高いかもしれない"]),
+        ("食べるかもしれます。", ["食べる", "か", "も", "しれます", "。"]),
+        ("かも しれません", ["か", "も", " ", "しれません"]),
+    ],
+)
+def test_kamoshirenai_groups(text, expected_groups):
+    tokens = parse_japanese_text(text)
+    groups = regroup_tokens(text, tokens)
+
+    assert [group.text for group in groups] == expected_groups
+    assert "".join(group.text for group in groups) == text
+    assert [token for group in groups for token in group.tokens] == tokens
+    for group in groups:
+        assert text[group.start_idx:group.end_idx] == group.text
+        if group.text.startswith(("かもしれ", "かも知れ")):
+            assert group.lookup_form == "かもしれない"
+
+
+def test_kamoshirenai_rejects_incomplete_or_invalid_endings():
+    tokens = parse_japanese_text("食べるかもしれません")
+    # Truncated prefixes must fail without reading beyond the token list.
+    for stop in range(2, len(tokens)):
+        assert not is_kamoshirenai_bridge(tokens[:stop], 1)
+    assert not is_kamoshirenai_bridge(tokens, -1)
+    assert not is_kamoshirenai_bridge(tokens, len(tokens))
+    assert not is_kamoshirenai_bridge([], 0)
+
+    invalid = parse_japanese_text("食べるかもしれます。")
+    assert not is_kamoshirenai_bridge(invalid, 1)
 
