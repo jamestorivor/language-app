@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import Panel from "./Panel.tsx";
 import "../../assets/tailwind.css";
+import { parsePageOnLoad } from "./page-text.ts";
 
 export default defineContentScript({
   matches: ["*://*.google.com/*", "http://localhost/*"],
@@ -24,5 +25,7 @@ export default defineContentScript({
     });
 
     ui.mount();
+
+    parsePageOnLoad();
   },
 });
