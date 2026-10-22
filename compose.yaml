@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: japdb
+    volumes:
+      - db_data:/var/lib/postgresql/db_data
+    ports:
+      - "127.0.0.1:5435:5432"
+
+volumes:
+  db_data:
