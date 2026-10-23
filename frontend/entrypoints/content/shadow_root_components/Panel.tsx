@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useState, type KeyboardEvent } from "react";
 import "./Panel.css";
 import getPanelPosition from "../panel-position.ts";
 import RatingScale from "./RatingScale.tsx";
@@ -64,13 +64,32 @@ function Panel() {
       const result = event as CustomEvent<selectionData>;
       setLatestSelected(result.detail);
     }
+    function handlePointerDown(event: PointerEvent) {
+      const panel = panelRef.current;
+      if (!panel) return;
+
+      const clickInPanel = event.composedPath().includes(panel);
+
+      if (!clickInPanel) {
+        setLatestSelected(null);
+      }
+    }
+    function handleKeyPress(event: globalThis.KeyboardEvent) {
+      if (event.key == "Escape") {
+        setLatestSelected(null);
+      }
+    }
 
     window.addEventListener("resize", handleWindowResize);
     document.addEventListener("vocab-word-click", handleWordClick);
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyPress);
 
     return () => {
       window.removeEventListener("resize", handleWindowResize);
       document.removeEventListener("vocab-word-click", handleWordClick);
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyPress);
     };
   }, []);
 
