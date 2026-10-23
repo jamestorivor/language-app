@@ -1,6 +1,6 @@
 import { useLayoutEffect, useState, type KeyboardEvent } from "react";
 import "./Panel.css";
-import getPanelPosition from "../panel-position.ts";
+import getPanelPosition from "./panel-position.ts";
 import RatingScale from "./RatingScale.tsx";
 
 export interface selectionData {

@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
-import Panel from "./shadow_root_components/Panel.tsx";
+import Panel from "../../features/vocabulary/panel/Panel.tsx";
 import "../../assets/tailwind.css";
-import { parsePageOnLoad } from "./page-text.ts";
+import { parsePageOnLoad } from "@/features/vocabulary/proces-page.ts";
 
 export default defineContentScript({
   matches: ["*://*.google.com/*", "http://localhost/*"],
@@ -26,6 +26,6 @@ export default defineContentScript({
 
     ui.mount();
 
-    parsePageOnLoad();
+    await parsePageOnLoad();
   },
 });
