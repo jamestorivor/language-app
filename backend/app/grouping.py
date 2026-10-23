@@ -153,7 +153,7 @@ def join_tokens(original_text:str, tokens : list[JapaneseTokenizedResponse], sta
     )
 
 
-def regroup_tokens(original_text : str, tokens : list[JapaneseTokenizedResponse]):
+def regroup_tokens(original_text : str, tokens : list[JapaneseTokenizedResponse]) -> list[TokenGroup]:
     curr_idx = 0
     token_list_length = len(tokens)
     output_token_list = []
