@@ -19,51 +19,128 @@ type ParseJapaneseResponse =
   | { ok: true; tokens: JapaneseToken[] }
   | { ok: false; error: string };
 
-async function parsePageOnLoad() {
-  const pageText: string | null = document.body.innerText;
-  if (!pageText) {
-    return null;
+function findTextNodes() {
+  const APP_TAGS = "vocab_popup";
+  const SELECTORS_TO_SKIP =
+    "script , style, noscript, textarea, input, [contenteditable]," + APP_TAGS;
+
+  const walker = document.createTreeWalker(
+    document.body,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode(node) {
+        const parent = node.parentElement;
+
+        if (!parent || parent.closest(SELECTORS_TO_SKIP)) {
+          return NodeFilter.FILTER_REJECT;
+        }
+
+        return node.textContent?.trim()
+          ? NodeFilter.FILTER_ACCEPT
+          : NodeFilter.FILTER_REJECT;
+      },
+    },
+  );
+
+  const textNodes: Text[] = [];
+  let node: Node | null = walker.nextNode();
+  while (node !== null) {
+    textNodes.push(node as Text);
+    node = walker.nextNode();
   }
 
-  const selectedText: string = pageText.trim();
-  if (selectedText.length < 1) {
-    return null;
-  }
+  return textNodes;
+}
+
+function wrapWord(textNode: Text, start_idx: number, end_idx: number) {
+  const range = document.createRange();
+  range.setStart(textNode, start_idx);
+  range.setEnd(textNode, end_idx);
+
+  // Creation of the span
+  const span = document.createElement("span");
+
+  span.classList.add("vocab-word");
+  // creating custom html attribute
+  span.dataset.vocabWord = "true";
+
+  range.surroundContents(span);
+
+  return span;
+}
+
+function injectWordStyles() {
+  if (document.getElementById("vocab-word-styles")) return;
+
+  const style = document.createElement("style");
+  style.id = "vocab-word-styles";
+  style.textContent = `
+    .vocab-word {
+      border-bottom: 2px solid orange;
+    }
+
+    .vocab-word:hover {
+      background-color: rgb(255 165 0 / 15%);
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+async function parsePageOnLoad() {
+  injectWordStyles();
+  const textNodes: Text[] = findTextNodes();
 
   let response: ParseJapaneseResponse;
-  try {
-    response = await browser.runtime.sendMessage({
-      type: PARSE_JAPANESE_MESSAGE_TYPE,
-      text: pageText,
-    });
-    if (response.ok) {
-      console.log(response.tokens);
-      return response.tokens;
-    } else if (!response.ok) {
-      throw new Error(response.error);
+
+  for (const textNode of textNodes) {
+    const nodeText = textNode.data;
+    try {
+      response = await browser.runtime.sendMessage({
+        type: PARSE_JAPANESE_MESSAGE_TYPE,
+        text: nodeText,
+      });
+
+      if (response.ok) {
+        console.log({
+          input: nodeText,
+          tokens: response.tokens,
+        });
+        let remainingNode: Text = textNode;
+
+        for (const token of response.tokens) {
+          let textStartIdx = 0;
+          let textEndIdx = token.end_idx - token.start_idx;
+          const span = wrapWord(remainingNode, textStartIdx, textEndIdx);
+
+          span.style.cursor = "pointer";
+
+          span.addEventListener("click", () => {
+            document.dispatchEvent(
+              new CustomEvent("vocab-word-click", {
+                detail: {
+                  selectedText: token.text,
+                  rect: span.getBoundingClientRect(),
+                },
+              }),
+            );
+          });
+
+          const remainder = span.nextSibling;
+
+          if (!(remainder instanceof Text)) {
+            break;
+          }
+
+          remainingNode = remainder;
+        }
+      } else if (!response.ok) {
+        throw new Error(response.error);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(message);
     }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(message);
   }
 }
 
-function handleTextSelection(): selectionData | null {
-  const selection: Selection | null = window.getSelection();
-  if (!selection) {
-    return null;
-  }
-
-  const selectedText: string = selection.toString().trim();
-  if (selectedText.length < 1) {
-    return null;
-  }
-  const range = selection.getRangeAt(0);
-  const rect = range.getBoundingClientRect();
-  return {
-    selectedText: selectedText,
-    rect: rect,
-  };
-}
-
-export { handleTextSelection, parsePageOnLoad };
+export { parsePageOnLoad };

@@ -1,5 +1,4 @@
 import { useLayoutEffect, useState } from "react";
-import { handleTextSelection } from "../page-text.ts";
 import "./Panel.css";
 import getPanelPosition from "../panel-position.ts";
 import RatingScale from "./RatingScale.tsx";
@@ -58,21 +57,20 @@ function Panel() {
   }, [latestSelected]);
 
   useEffect(() => {
-    function handleSelectionChange() {
-      const result = handleTextSelection();
-      setLatestSelected(result);
-    }
     function handleWindowResize() {
       setWindowData({ height: window.innerHeight, width: window.innerWidth });
-      handleSelectionChange();
+    }
+    function handleWordClick(event: Event) {
+      const result = event as CustomEvent<selectionData>;
+      setLatestSelected(result.detail);
     }
 
     window.addEventListener("resize", handleWindowResize);
-    document.addEventListener("selectionchange", handleSelectionChange);
+    document.addEventListener("vocab-word-click", handleWordClick);
 
     return () => {
       window.removeEventListener("resize", handleWindowResize);
-      document.removeEventListener("selectionchange", handleSelectionChange);
+      document.removeEventListener("vocab-word-click", handleWordClick);
     };
   }, []);
 
@@ -81,12 +79,6 @@ function Panel() {
   } else if (latestSelected) {
     return panelContent(latestSelected, panelRef, windowData, panelData);
   }
-
-  //   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  //     if (message.type == "GET_SELECTED_TEXT") {
-  //       sendResponse({ success: true, text: latestSelected?.text });
-  //     }
-  //   });
 }
 
 export default Panel;
