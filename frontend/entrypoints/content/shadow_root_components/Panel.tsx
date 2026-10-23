@@ -1,7 +1,7 @@
 import { useLayoutEffect, useState } from "react";
-import { handleTextSelection } from "./page-text.ts";
+import { handleTextSelection } from "../page-text.ts";
 import "./Panel.css";
-import getPanelPosition from "./panel-position.ts";
+import getPanelPosition from "../panel-position.ts";
 import RatingScale from "./RatingScale.tsx";
 
 export interface selectionData {

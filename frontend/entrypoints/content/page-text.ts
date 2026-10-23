@@ -1,4 +1,4 @@
-import type { selectionData } from "./Panel";
+import type { selectionData } from "./shadow_root_components/Panel";
 
 // These types also in background.ts might be better to have a file for all schemas
 type ParseJapaneseMessage = {

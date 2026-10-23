@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import Panel from "./Panel.tsx";
+import Panel from "./shadow_root_components/Panel.tsx";
 import "../../assets/tailwind.css";
 import { parsePageOnLoad } from "./page-text.ts";
 
