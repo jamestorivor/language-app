@@ -6,6 +6,8 @@ This application is aimed at Japanese learners who are trying to do more extensi
 
 This project is under development.
 
+The vocabulary panel should stay open when the page scrolls or the window resizes. Dismiss it by clicking outside the panel or pressing Escape.
+
 ## Planned features
 
 1. Select and save : Select a Japanese word and save the word to your seen db.
