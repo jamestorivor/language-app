@@ -1,9 +1,22 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from enum import StrEnum
+from typing import Any
 
 class ParseJapaneseRequest(BaseModel):
     text : str
 
+class ParseJapaneseResponse(BaseModel):
+    word_id : int
+    familiarity_score : int
+    senses : list[dict[str, Any]]
+
+class UpdateFamiliarityScoreRequest(BaseModel):
+    word_id : int
+    new_score : int = Field(ge=1, le=5)
+
+class UpdateFamiliarityScoreResponse(BaseModel):
+    word_id : int
+    new_score : int
 class JapaneseTokenizedResponse(BaseModel):
     text : str
     dictionary_form : str
@@ -52,12 +65,18 @@ class PartOfSpeech(BaseModel):
             conjugation_form=raw[5],
         )
 
-class TokenGroup(BaseModel):
+class GroupToken(BaseModel) :
+    word_id : int | None = None
     text : str
     lookup_form : str
+    familiarity_score : int | None = None
+    senses : list[dict[str, Any]] | None = None
     start_idx : int
     end_idx : int
     tokens : list[JapaneseTokenizedResponse]
+    # Rethink setting this to None, currently done to allow display 
+    # to not have to be decided when regrouping tokens for the first time
+    display : bool | None = None
 
 
 class ConjugationType(StrEnum):

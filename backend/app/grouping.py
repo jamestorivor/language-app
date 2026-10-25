@@ -1,6 +1,18 @@
-from app.schemas import JapaneseTokenizedResponse, MajorPOS, PartOfSpeech, TokenGroup
+from app.schemas import JapaneseTokenizedResponse, MajorPOS, PartOfSpeech, GroupToken
+from app.db.query_jap_db import get_word_details
+from sqlalchemy.orm import Session
 
 SUPPORTING_VERBS = {"いる", "しまう", "おく"}
+
+IGNORED_POS = {
+    MajorPOS.PARTICLE,
+    MajorPOS.AUXILIARY_VERB,
+    MajorPOS.PREFIX,
+    MajorPOS.SUFFIX,
+    MajorPOS.SYMBOL,
+    MajorPOS.SUPPLEMENTARY_SYMBOL,
+    MajorPOS.WHITESPACE,
+}
 
 def adjacent(prev_token : JapaneseTokenizedResponse, curr_token : JapaneseTokenizedResponse):
     return prev_token.end_idx == curr_token.start_idx
@@ -144,23 +156,22 @@ def join_tokens(original_text:str, tokens : list[JapaneseTokenizedResponse], sta
     end_token = tokens[end_token_idx]
 
 
-    return TokenGroup(
+    return GroupToken(
         text= original_text[start_token.start_idx: end_token.end_idx],
         lookup_form=start_token.dictionary_form,
         start_idx=start_token.start_idx,
         end_idx=end_token.end_idx,
-        tokens=tokens[start_idx : end_token_idx + 1]
+        tokens=tokens[start_idx : end_token_idx + 1],
     )
 
 
-def regroup_tokens(original_text : str, tokens : list[JapaneseTokenizedResponse]) -> list[TokenGroup]:
+def regroup_tokens(original_text : str, tokens : list[JapaneseTokenizedResponse]) -> list[GroupToken]:
     curr_idx = 0
     token_list_length = len(tokens)
     output_token_list = []
 
     while curr_idx < token_list_length:
         curr_token = tokens[curr_idx]
-        
         major_part_of_speech = curr_token.part_of_speech[0]
         if is_kamoshirenai_bridge(tokens, curr_idx):
             # Start at か even after a noun, particle, or sentence boundary.
@@ -180,13 +191,45 @@ def regroup_tokens(original_text : str, tokens : list[JapaneseTokenizedResponse]
             curr_idx += group_length
         else:
             output_token_list.append(
-                TokenGroup(
+                GroupToken(
                     text=curr_token.text,
                     lookup_form=curr_token.dictionary_form,
                     start_idx=curr_token.start_idx,
                     end_idx=curr_token.end_idx,
-                    tokens=[curr_token]
+                    tokens=[curr_token],
                 )
             )
             curr_idx += 1
     return output_token_list
+
+def get_display_status(token : GroupToken) :
+    # Update in the future if neccessary 
+    # Current -> If word does not exist in db, do set display to false
+    if not token.word_id:
+        return False
+
+    THRESHOLD_FAMILIARITY_SCORE = 4
+    FAMILIAR_ENOUGH = token.familiarity_score >= THRESHOLD_FAMILIARITY_SCORE
+
+    major_part_of_speech = token.tokens[0].part_of_speech[0]
+    if major_part_of_speech in IGNORED_POS:
+        return False
+    
+    if FAMILIAR_ENOUGH:
+        return False
+    return True
+
+def add_db_data_to_tokens(db : Session, group_tokens : list[GroupToken], user_id : int) -> list[GroupToken] :
+    enriched_tokens = []
+    for token in group_tokens:
+        db_data = get_word_details(db, token, user_id)
+
+        if db_data:
+            token.word_id=db_data.word_id
+            token.familiarity_score=db_data.familiarity_score
+            token.senses=db_data.senses
+
+        token.display = get_display_status(token)
+        enriched_tokens.append(token)
+    return enriched_tokens
+
