@@ -2,14 +2,15 @@ import { useLayoutEffect, useState, type KeyboardEvent } from "react";
 import "./Panel.css";
 import getPanelPosition from "./panel-position.ts";
 import RatingScale from "./RatingScale.tsx";
+import type { TokenGroup } from "@/contracts/parse-japanese.ts";
 
 export interface selectionData {
-  selectedText: string;
+  wordToken: TokenGroup;
   rect: DOMRect;
 }
 
 function panelContent(
-  { selectedText, rect }: selectionData,
+  { wordToken, rect }: selectionData,
   panelRef: React.RefObject<HTMLDivElement | null>,
   windowData: { height: number; width: number },
   panelData: { height: number; width: number },
@@ -27,7 +28,11 @@ function panelContent(
           left: panelTopLeft.x,
         }}
       >
-        <p>{selectedText}</p>
+        <p>{wordToken.lookup_form}</p>
+        {wordToken.senses?.map((sense, index) => (
+          <p key={index}>{sense.glosses.join("; ")}</p>
+        ))}
+        <p>{wordToken.familiarity_score}</p>
         <RatingScale></RatingScale>
       </div>
     );
@@ -62,6 +67,7 @@ function Panel() {
     }
     function handleWordClick(event: Event) {
       const result = event as CustomEvent<selectionData>;
+      console.log(`[INFO] : clicked ${result.detail.wordToken.display}`);
       setLatestSelected(result.detail);
     }
     function handlePointerDown(event: PointerEvent) {

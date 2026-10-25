@@ -3,37 +3,67 @@ import type {
   ParseJapaneseResponse,
 } from "@/contracts/parse-japanese";
 import PARSE_JAPANESE_MESSAGE_TYPE from "@/contracts/parse-japanese";
+import type {
+  UpdateFamiliarityScoreData,
+  UpdateFamiliarityScoreMessage,
+  UpdateFamiliarityScoreResponse,
+} from "@/contracts/jap-vocab";
+import type { MessageLayerResponse } from "@/contracts/message-types";
+import { UPDATE_FAMILIARITY_SCORE_MESSAGE_TYPE } from "@/contracts/jap-vocab";
 import { fetchJapaneseTokenGroups } from "@/api/parse-japanese";
+import { updateWordFamiliarity } from "@/api/jap-vocab";
 
 async function handleJapaneseParseRequest(
   text: string,
-  sendResponse: (response: ParseJapaneseResponse) => void,
-) {
+): Promise<ParseJapaneseResponse> {
+  if (typeof text !== "string") {
+    throw new Error("Text must be string");
+  }
+
+  return await fetchJapaneseTokenGroups(text);
+}
+
+async function handleFamiliarityScoreUpdateRequest(
+  data: UpdateFamiliarityScoreData,
+): Promise<UpdateFamiliarityScoreResponse> {
+  if (
+    !data ||
+    !Number.isInteger(data.word_id) ||
+    !Number.isInteger(data.new_score)
+  ) {
+    throw new Error("Invalid familiarity update data");
+  }
+
+  return await updateWordFamiliarity(data.word_id, data.new_score);
+}
+
+async function callApi<T>(
+  api_call: () => Promise<T>,
+): Promise<MessageLayerResponse<T>> {
+  let message_response: MessageLayerResponse<T>;
   try {
-    if (typeof text !== "string") {
-      sendResponse({ ok: false, error: "Text must be a string" });
-      return;
-    }
-
-    const response = await fetchJapaneseTokenGroups(text);
-
-    sendResponse({ ok: true, tokens: response });
+    const api_response = await api_call();
+    message_response = { ok: true, response: api_response };
+    return message_response;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    sendResponse({ ok: false, error: message });
+    message_response = { ok: false, error: message };
+    return message_response;
   }
 }
 
 function messageListener(
-  message: ParseJapaneseMessage,
-  _sender: Browser.runtime.MessageSender,
-  sendResponse: (response: ParseJapaneseResponse) => void,
+  message: ParseJapaneseMessage | UpdateFamiliarityScoreMessage,
 ) {
-  if (message?.type !== PARSE_JAPANESE_MESSAGE_TYPE) return;
+  switch (message.type) {
+    case PARSE_JAPANESE_MESSAGE_TYPE:
+      return callApi(() => handleJapaneseParseRequest(message.text));
+    case UPDATE_FAMILIARITY_SCORE_MESSAGE_TYPE:
+      return callApi(() => handleFamiliarityScoreUpdateRequest(message.data));
 
-  handleJapaneseParseRequest(message.text, sendResponse);
-
-  return true;
+    default:
+      return undefined;
+  }
 }
 
 export default defineBackground(() => {

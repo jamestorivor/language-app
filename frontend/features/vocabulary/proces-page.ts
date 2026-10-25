@@ -1,6 +1,6 @@
 import { findTextNodes } from "@/features/vocabulary/text-nodes";
 import { applyClickableWordToNode } from "@/features/vocabulary/bound-words";
-import { requestJapaneseParsing } from "@/api/parse-japanese";
+import { requestJapaneseParsing } from "@/messaging/parse-japanese";
 
 function injectWordStyles() {
   if (document.getElementById("vocab-word-styles")) return;
@@ -8,10 +8,22 @@ function injectWordStyles() {
   const style = document.createElement("style");
   style.id = "vocab-word-styles";
   style.textContent = `
+    .unfamiliar {
+    border-bottom: 2px solid orange;
+    }
+    .familiarity-1 {
+      border-bottom: 2px solid yellow;
+    }
+    .familiarity-2 {
+      border-bottom: 2px solid blue;
+    }
+    .familiarity-3 {
+      border-bottom: 2px solid green;
+    }
+
     .vocab-word {
       border-bottom: 2px solid orange;
     }
-
     .vocab-word:hover {
       background-color: rgb(255 165 0 / 15%);
     }
@@ -25,7 +37,7 @@ async function processPageText() {
     const nodeText = textNode.data;
     try {
       const response = await requestJapaneseParsing(nodeText);
-      const tokens = response.tokens;
+      const tokens = response.response;
       applyClickableWordToNode(tokens, textNode);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
