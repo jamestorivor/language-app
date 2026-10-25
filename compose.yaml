@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: japdb
     volumes:
-      - db_data:/var/lib/postgresql/db_data
+      - db_data:/var/lib/postgresql/data
     ports:
       - "127.0.0.1:5435:5432"
 
