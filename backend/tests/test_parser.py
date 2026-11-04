@@ -1,6 +1,6 @@
 import pytest
 from app.schemas import JapaneseTokenizedResponse, MajorPOS
-from app.parser import parse_japanese_text
+from app.services.japanese_vocab.parser import parse_japanese_text
 
 def test_parse_japanese_text():
     tokens : list[JapaneseTokenizedResponse] = parse_japanese_text("猫が食べます。")

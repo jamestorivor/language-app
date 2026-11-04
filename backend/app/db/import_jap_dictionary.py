@@ -1,7 +1,7 @@
 import gzip
 import xml.etree.ElementTree as ET
 from config import DATA_PATH
-from app.db.models import JapaneseDictionary, JapaneseReading, JapaneseSpelling
+from app.db.models.japanese_vocab import JapaneseDictionary, JapaneseReading, JapaneseSpelling
 from app.db.session import SessionLocal
 from typing import TypedDict
 from sqlalchemy import select

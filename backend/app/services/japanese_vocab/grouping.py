@@ -1,8 +1,8 @@
 from app.schemas import JapaneseTokenizedResponse, MajorPOS, PartOfSpeech, GroupToken
-from app.db.query_jap_db import get_word_details
+from app.data_access.japanese_vocab import get_word_details
+from app.services.japanese_vocab.expressions import match_reviewed_expression
+from app.services.japanese_vocab.grammar import TE_EXTENSIONS, annotate_cross_group_grammar, annotate_grammar
 from sqlalchemy.orm import Session
-
-SUPPORTING_VERBS = {"いる", "しまう", "おく"}
 
 IGNORED_POS = {
     MajorPOS.PARTICLE,
@@ -49,24 +49,18 @@ def is_negative_continuation(tokens : list[JapaneseTokenizedResponse], end : int
         and curr_token.dictionary_form == "ない"
     )
 
-def is_supporting_verb_bridge(tokens : list[JapaneseTokenizedResponse], end : int):
-    # Requires a previous token, a particle, and a following verb.
-    if not 0 < end < len(tokens) - 1:
+def is_te_form_ending(tokens: list[JapaneseTokenizedResponse], end: int) -> bool:
+    if not 0 < end < len(tokens):
         return False
 
     previous = tokens[end - 1]
     particle = tokens[end]
-    following = tokens[end + 1]
 
-    if not (
-        adjacent(previous, particle)
-        and adjacent(particle, following)
-    ):
+    if not adjacent(previous, particle):
         return False
 
     previous_pos = PartOfSpeech.from_sudachi(previous.part_of_speech)
     particle_pos = PartOfSpeech.from_sudachi(particle.part_of_speech)
-    following_pos = PartOfSpeech.from_sudachi(following.part_of_speech)
 
     return (
         previous_pos.major_pos in {
@@ -78,55 +72,22 @@ def is_supporting_verb_bridge(tokens : list[JapaneseTokenizedResponse], end : in
         and particle.text in {"て", "で"}
         and particle_pos.major_pos == MajorPOS.PARTICLE
         and particle_pos.subcategory_1 == "接続助詞"
-        and following_pos.major_pos == MajorPOS.VERB
-        and following_pos.subcategory_1 == "非自立可能"
-        and following.dictionary_form in SUPPORTING_VERBS
     )
 
-def is_kamoshirenai_bridge(
-    tokens: list[JapaneseTokenizedResponse],
-    end: int,
-) -> bool:
-    # Need か + も + しれ and at least one negative-ending token.
-    if end < 0 or end + 3 >= len(tokens):
+def is_supporting_verb_bridge(tokens : list[JapaneseTokenizedResponse], end : int):
+    # Check the longer construction before accepting a standalone て/で ending.
+    if not is_te_form_ending(tokens, end) or end + 1 >= len(tokens):
         return False
 
-    ka, mo, shire = tokens[end:end + 3]
+    particle = tokens[end]
+    following = tokens[end + 1]
+    following_pos = PartOfSpeech.from_sudachi(following.part_of_speech)
 
-    if not (
-        ka.text == "か"
-        and ka.part_of_speech[0] == MajorPOS.PARTICLE
-        and mo.text == "も"
-        and mo.part_of_speech[0] == MajorPOS.PARTICLE
-        and shire.dictionary_form in {"しれる", "知れる"}
-        and shire.part_of_speech[0] == MajorPOS.VERB
-    ):
-        return False
-
-    # Require a negative continuation before accepting the bridge.
-    tail = tokens[end + 3:end + 5]
-
-    if (
-        is_auxiliary(tail[0])
-        and tail[0].dictionary_form == "ない"
-    ):
-        matched_end = end + 4
-    elif (
-        len(tail) == 2
-        and all(is_auxiliary(token) for token in tail)
-        and tail[0].text == "ませ"
-        and tail[0].dictionary_form == "ます"
-        and tail[1].text == "ん"
-        and tail[1].dictionary_form == "ぬ"
-    ):
-        matched_end = end + 5
-    else:
-        return False
-
-    # Check the expression itself; find_group_end checks its previous boundary.
-    return all(
-        adjacent(tokens[i - 1], tokens[i])
-        for i in range(end + 1, matched_end)
+    return (
+        adjacent(particle, following)
+        and following_pos.major_pos == MajorPOS.VERB
+        and following_pos.subcategory_1 == "非自立可能"
+        and following.dictionary_form in TE_EXTENSIONS
     )
 
 def find_group_end(tokens : list[JapaneseTokenizedResponse], start_index : int):
@@ -142,8 +103,9 @@ def find_group_end(tokens : list[JapaneseTokenizedResponse], start_index : int):
             end += 1
         elif is_supporting_verb_bridge(tokens, end):
             end += 2  # Consume both て/で and the supporting verb
-        elif is_kamoshirenai_bridge(tokens, end):
-            end += 3  # Consume か + も + しれ
+        elif is_te_form_ending(tokens, end):
+            end += 1
+            break  # Include the ending, leaving the following word independent.
         else:
             break
 
@@ -165,7 +127,11 @@ def join_tokens(original_text:str, tokens : list[JapaneseTokenizedResponse], sta
     )
 
 
-def regroup_tokens(original_text : str, tokens : list[JapaneseTokenizedResponse]) -> list[GroupToken]:
+def match_expression(tokens: list[JapaneseTokenizedResponse], start: int):
+    return match_reviewed_expression(tokens, start, find_group_end)
+
+
+def regroup_tokens(original_text : str, tokens : list[JapaneseTokenizedResponse], dictionary_matches=None) -> list[GroupToken]:
     curr_idx = 0
     token_list_length = len(tokens)
     output_token_list = []
@@ -173,14 +139,22 @@ def regroup_tokens(original_text : str, tokens : list[JapaneseTokenizedResponse]
     while curr_idx < token_list_length:
         curr_token = tokens[curr_idx]
         major_part_of_speech = curr_token.part_of_speech[0]
-        if is_kamoshirenai_bridge(tokens, curr_idx):
-            # Start at か even after a noun, particle, or sentence boundary.
-            # Continue from しれ to consume its auxiliaries, including past forms.
-            group_end = find_group_end(tokens, curr_idx + 2)
-            new_token = join_tokens(
-                original_text, tokens, curr_idx, group_end - curr_idx
-            )
-            new_token.lookup_form = "かもしれない"
+        expression = match_expression(tokens, curr_idx)
+        if expression:
+            group_end, lookup_form, source_entry_id = expression
+            new_token = join_tokens(original_text, tokens, curr_idx, group_end - curr_idx)
+            new_token.lookup_form = lookup_form
+            new_token.source_entry_id = source_entry_id
+            output_token_list.append(new_token)
+            curr_idx = group_end
+        elif dictionary_matches and curr_idx in dictionary_matches:
+            match = max(dictionary_matches[curr_idx], key=lambda item: item.end)
+            group_end = match.end
+            if match.conjugation_head is not None:
+                group_end = max(group_end, find_group_end(tokens, match.conjugation_head))
+            new_token = join_tokens(original_text, tokens, curr_idx, group_end - curr_idx)
+            new_token.lookup_form = match.lookup_form
+            new_token.source_entry_id = match.source_entry_id
             output_token_list.append(new_token)
             curr_idx = group_end
         elif major_part_of_speech in {MajorPOS.VERB, MajorPOS.ADJECTIVE}:
@@ -200,6 +174,9 @@ def regroup_tokens(original_text : str, tokens : list[JapaneseTokenizedResponse]
                 )
             )
             curr_idx += 1
+    for group in output_token_list:
+        group.grammar = annotate_grammar(group)
+    annotate_cross_group_grammar(output_token_list, tokens, original_text)
     return output_token_list
 
 def get_display_status(token : GroupToken) :
@@ -208,15 +185,20 @@ def get_display_status(token : GroupToken) :
     if not token.word_id:
         return False
 
-    THRESHOLD_FAMILIARITY_SCORE = 4
-    FAMILIAR_ENOUGH = token.familiarity_score >= THRESHOLD_FAMILIARITY_SCORE
+    # A recognized expression can start with a normally ignored particle.
+    if token.source_entry_id is not None:
+        return True
+
+    # Need to update logic for familiarity, set to 6 to allow all scores for now
+    # THRESHOLD_FAMILIARITY_SCORE = 6
+    # FAMILIAR_ENOUGH = token.familiarity_score >= THRESHOLD_FAMILIARITY_SCORE
 
     major_part_of_speech = token.tokens[0].part_of_speech[0]
     if major_part_of_speech in IGNORED_POS:
         return False
     
-    if FAMILIAR_ENOUGH:
-        return False
+    # if FAMILIAR_ENOUGH:
+    #     return False
     return True
 
 def add_db_data_to_tokens(db : Session, group_tokens : list[GroupToken], user_id : int) -> list[GroupToken] :

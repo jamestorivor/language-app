@@ -5,13 +5,6 @@ from app.db.session import Base
 
 from typing import Any
 
-class User(Base):
-    __tablename__ = "users"
-
-    id : Mapped[int] = mapped_column(primary_key=True)
-    name : Mapped[str]
-    # date_created : ???
-
 class JapaneseDictionary(Base):
     __tablename__ = "japanese_dictionary"
 
@@ -117,3 +110,4 @@ class JapaneseWordFamiliarity(Base):
             name="valid_familiarity_score"
         ),
     )
+

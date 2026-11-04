@@ -1,5 +1,6 @@
 from sudachipy import Dictionary, SplitMode
 from app.schemas import JapaneseTokenizedResponse
+import unicodedata
 
 jap_dict = Dictionary(dict="core")
 SPLIT_MODE = SplitMode.B
@@ -23,3 +24,11 @@ def parse_japanese_text(text: str) -> list[dict]:
         )
 
     return list_of_tokens
+
+def katakana_to_hiragana(text: str) -> str:
+    text = unicodedata.normalize("NFKC", text)
+
+    return "".join(
+        chr(ord(char) - 0x60) if "ァ" <= char <= "ヶ" else char
+        for char in text
+    )

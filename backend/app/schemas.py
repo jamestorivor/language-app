@@ -65,8 +65,17 @@ class PartOfSpeech(BaseModel):
             conjugation_form=raw[5],
         )
 
+class GrammarMatch(BaseModel):
+    id: str
+    text: str
+    meaning: str
+    start_idx: int
+    end_idx: int
+
+
 class GroupToken(BaseModel) :
     word_id : int | None = None
+    source_entry_id: int | None = None
     text : str
     lookup_form : str
     familiarity_score : int | None = None
@@ -74,6 +83,7 @@ class GroupToken(BaseModel) :
     start_idx : int
     end_idx : int
     tokens : list[JapaneseTokenizedResponse]
+    grammar: list[GrammarMatch] = Field(default_factory=list)
     # Rethink setting this to None, currently done to allow display 
     # to not have to be decided when regrouping tokens for the first time
     display : bool | None = None
@@ -272,3 +282,4 @@ class ConjugationForm(StrEnum):
     IMPERATIVE = "命令形"
     VOLITIONAL_PRESUMPTIVE = "意志推量形"
     KU_NOMINALIZATION = "ク語法"
+
