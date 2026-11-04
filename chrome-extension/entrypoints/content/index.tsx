@@ -1,10 +1,14 @@
 import { createRoot } from "react-dom/client";
-import Panel from "../../features/vocabulary/panel/Panel.tsx";
 import "../../assets/tailwind.css";
-import { parsePageOnLoad } from "@/features/vocabulary/proces-page.ts";
+import VocabularyApp from "@/features/vocabulary/VocabularyApp.tsx";
 
 export default defineContentScript({
-  matches: ["*://*.google.com/*", "http://localhost/*"],
+  matches: [
+    "*://*.google.com/*",
+    "http://localhost/*",
+    "http://*/*",
+    "https://*/*",
+  ],
   cssInjectionMode: "ui",
   async main(ctx) {
     const ui = await createShadowRootUi(ctx, {
@@ -14,7 +18,7 @@ export default defineContentScript({
       onMount(container) {
         const root = createRoot(container);
 
-        root.render(<Panel></Panel>);
+        root.render(<VocabularyApp></VocabularyApp>);
 
         return root;
       },
@@ -25,7 +29,5 @@ export default defineContentScript({
     });
 
     ui.mount();
-
-    await parsePageOnLoad();
   },
 });

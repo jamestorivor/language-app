@@ -15,6 +15,12 @@ node_modules/
 /frontend/stats.html
 /frontend/stats-*.json
 /frontend/web-ext.config.ts
+/chrome-extension/.output/
+/chrome-extension/.wxt/
+/chrome-extension/dist/
+/chrome-extension/stats.html
+/chrome-extension/stats-*.json
+/chrome-extension/web-ext.config.ts
 
 # Python environments, caches, and package output
 .venv/
@@ -44,3 +50,4 @@ __pycache__/
 
 # Personal frontend todo list
 /frontend/todo.md
+/chrome-extension/todo.md

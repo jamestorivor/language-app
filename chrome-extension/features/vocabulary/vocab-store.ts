@@ -8,11 +8,21 @@ import { requestWordFamiliarityUpdate } from "@/messaging/jap-vocab";
 
 class JapaneseVocabStore {
   store: LocalJapStorage = {};
-  constructor(tokenList: TokenGroup[]) {
+
+  constructor(tokenList: TokenGroup[] = []) {
     for (const token of tokenList) {
-      const token_id = token.word_id;
-      if (token_id !== null) {
-        this.store[token_id] = token;
+      const word_id = token.word_id;
+      if (word_id !== null) {
+        this.store[word_id] = token;
+      }
+    }
+  }
+
+  addTokens(tokenList: TokenGroup[]) {
+    for (const token of tokenList) {
+      const word_id = token.word_id;
+      if (word_id !== null) {
+        this.store[word_id] = token;
       }
     }
   }

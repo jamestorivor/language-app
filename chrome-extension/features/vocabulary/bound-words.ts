@@ -1,10 +1,10 @@
 import type { TokenGroup } from "@/contracts/parse-japanese";
 
-function get_familiarity_css_class(token: TokenGroup) {
-  if (token.familiarity_score == 0) {
+function get_familiarity_css_class(familiarity_score: number) {
+  if (familiarity_score == 0) {
     return "unfamiliar";
   } else {
-    return `familiarity-${token.familiarity_score?.toString()}`;
+    return `familiarity-${familiarity_score?.toString()}`;
   }
 }
 
@@ -20,6 +20,7 @@ function wrapWordWithSpan(textNode: Text, start_idx: number, end_idx: number) {
 
   span.classList.add("vocab-word");
   // creating custom html attribute
+
   span.dataset.vocabWord = "true";
 
   range.surroundContents(span);
@@ -32,8 +33,15 @@ function applyClickableWord(token: TokenGroup, textNode: Text) {
   let textEndIdx = token.text.length;
   const span = wrapWordWithSpan(textNode, textStartIdx, textEndIdx);
 
-  const className = get_familiarity_css_class(token);
-  span.className = className;
+  if (token.familiarity_score !== null) {
+    const className = get_familiarity_css_class(token.familiarity_score);
+    span.classList.add(className);
+  }
+
+  const wordId = token.word_id;
+  if (wordId !== null) {
+    span.dataset.wordId = String(wordId);
+  }
 
   span.addEventListener("click", () => {
     document.dispatchEvent(
@@ -67,4 +75,4 @@ function applyClickableWordToNode(tokens: TokenGroup[], textNode: Text) {
   }
 }
 
-export { applyClickableWordToNode };
+export { applyClickableWordToNode, get_familiarity_css_class };

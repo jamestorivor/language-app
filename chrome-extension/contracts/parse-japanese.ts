@@ -30,6 +30,7 @@ type TokenGroup = {
   end_idx: number;
   tokens: JapaneseToken[];
   display: boolean;
+  grammar?: { id: string; text: string; meaning: string; start_idx: number; end_idx: number }[];
 };
 
 const PARSE_JAPANESE_MESSAGE_TYPE = "PARSE_JAPANESE";
