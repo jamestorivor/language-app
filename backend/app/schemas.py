@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from enum import StrEnum
 from typing import Any
 
@@ -283,3 +283,43 @@ class ConjugationForm(StrEnum):
     VOLITIONAL_PRESUMPTIVE = "意志推量形"
     KU_NOMINALIZATION = "ク語法"
 
+
+class PodcastEpisodeCreate(BaseModel):
+    audio_location: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    author: str = Field(min_length=1)
+    duration: float = Field(gt=0, allow_inf_nan=False)
+
+
+class PodcastEpisodeResponse(PodcastEpisodeCreate):
+    model_config = {"from_attributes": True}
+    id: int
+
+
+class PodcastChunkCreate(BaseModel):
+    start_time: float = Field(ge=0, allow_inf_nan=False)
+    end_time: float = Field(gt=0, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def validate_times(self):
+        if self.end_time <= self.start_time:
+            raise ValueError("end_time must be greater than start_time")
+        return self
+
+
+class PodcastTranscriptCreate(BaseModel):
+    text: str
+
+
+class PodcastTranscriptResponse(PodcastTranscriptCreate):
+    model_config = {"from_attributes": True}
+    id: int
+    podcast_chunk_id: int
+
+
+class PodcastChunkResponse(PodcastChunkCreate):
+    model_config = {"from_attributes": True}
+    id: int
+    user_id: int
+    podcast_id: int
+    transcript: PodcastTranscriptResponse | None = None
