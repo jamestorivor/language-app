@@ -64,6 +64,17 @@ def test_episode_and_chunk_lifecycle(client):
     assert len(client.get(f'/podcasts/{episode_id}/chunks').json()) == 3
 
 
+def test_public_api_prefix_preserves_podcast_routes(client):
+    payload = {'audio_location': 'https://example.com/prefixed', 'title': 'Episode',
+               'author': 'Author', 'chunk_interval': 20,
+               'podcast_details': {'provider': 'youtube', 'id': 'test'}}
+    created = client.post('/api/podcasts', json=payload)
+    assert created.status_code == 200
+    episode_id = created.json()['id']
+    assert client.get(f'/api/podcasts/{episode_id}').json()['title'] == 'Episode'
+    assert len(client.get(f'/api/podcasts/{episode_id}/chunks').json()) == 3
+
+
 def test_update_episode_details(client):
     created = client.post('/podcasts', json={
         'audio_location': 'https://example.com/edit', 'title': 'Before', 'author': 'Old',

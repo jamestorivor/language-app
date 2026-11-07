@@ -6,6 +6,8 @@ app = FastAPI()
 
 app.include_router(japanese_vocab.router)
 app.include_router(podcast.router)
+app.include_router(japanese_vocab.router, prefix="/api")
+app.include_router(podcast.router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,

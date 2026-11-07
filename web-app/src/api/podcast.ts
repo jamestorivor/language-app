@@ -5,7 +5,7 @@ import type {
   SegmentResponse,
 } from "../contracts/podcast";
 
-const API_PREFIX = "/podcasts";
+const API_PREFIX = "podcasts";
 
 async function createEpisode(
   episode: CreateEpisodeRequest,
