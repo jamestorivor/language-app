@@ -1,0 +1,39 @@
+.transcript-word {
+  position: relative;
+  cursor: pointer;
+  border: 0;
+  border-radius: 5px;
+  padding: 0 2px;
+  color: inherit;
+  font: inherit;
+  line-height: 1.35;
+  letter-spacing: inherit;
+  background: transparent;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.transcript-word:focus-visible { outline: 2px solid #57534e; outline-offset: 2px; }
+.transcript-word-0 { --word-accent: 192 76 116; }
+.transcript-word-1 { --word-accent: 224 105 48; }
+.transcript-word-2 { --word-accent: 235 176 30; }
+.transcript-word-3 { --word-accent: 35 138 225; }
+.transcript-word-4 { --word-accent: 20 198 163; }
+.transcript-word:is(.transcript-word-0, .transcript-word-1, .transcript-word-2, .transcript-word-3, .transcript-word-4) {
+  border-bottom: 1px solid rgb(var(--word-accent));
+  box-shadow: 0 0 0 0.5px rgb(var(--word-accent) / 35%);
+  background-color: rgb(var(--word-accent) / 24%);
+}
+.transcript-word:hover { background-color: rgb(var(--word-accent, 120 113 108) / 34%); }
+
+.transcript-word:not(.transcript-word-5)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-top-left-radius: 3px;
+  background: rgb(var(--word-accent, 168 162 158));
+  pointer-events: none;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}

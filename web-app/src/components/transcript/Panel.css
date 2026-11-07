@@ -1,0 +1,115 @@
+.panel {
+  --panel-ink: #292929;
+  --panel-muted: #777;
+  --panel-accent: #444;
+  --panel-line: #e8e8e8;
+  box-sizing: border-box;
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  max-width: calc(100vw - 24px);
+  max-height: min(280px, calc(100dvh - 24px));
+  overflow: hidden;
+  border: 1px solid #d8d8d8;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--panel-ink);
+  box-shadow: 0 3px 12px rgb(0 0 0 / 12%);
+  font: 13px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  text-align: left;
+  color-scheme: light;
+}
+
+.panel *,
+.panel *::before,
+.panel *::after {
+  box-sizing: border-box;
+}
+
+.panel p,
+.panel h2 {
+  margin: 0;
+}
+
+.panel-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 12px 14px 0;
+}
+
+.panel-word {
+  min-width: 0;
+}
+
+.panel .panel-reading {
+  font-size: 19px;
+  font-weight: 650;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.panel-score {
+  flex-shrink: 0;
+  color: var(--panel-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.panel-translations {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 12px 14px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #ccc transparent;
+}
+
+.panel-definition-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.panel-definition {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 5px;
+}
+
+.panel-definition-number {
+  color: var(--panel-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.panel-empty {
+  color: var(--panel-muted);
+}
+
+.panel-familiarity {
+  flex-shrink: 0;
+  padding: 9px 14px;
+  border-top: 1px solid var(--panel-line);
+}
+
+@media (max-height: 240px) {
+  .panel {
+    overflow-y: auto;
+  }
+
+  .panel-translations {
+    flex-shrink: 0;
+    overflow-y: visible;
+  }
+}
