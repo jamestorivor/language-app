@@ -1,30 +1,59 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
+from app.services.podcast.youtube_connect import get_japanese_transcript
+from app.services.podcast.duration import get_episode_duration
 from app.data_access import podcast as data
 from app.db.session import get_db
-from app.main import DEVELOPMENT_USER_ID
-from app.schemas import PodcastChunkCreate, PodcastChunkResponse, PodcastEpisodeCreate, PodcastEpisodeResponse, PodcastTranscriptCreate, PodcastTranscriptResponse
+from app.config import DEVELOPMENT_USER_ID
+from app.schemas import PodcastChunkCreate, PodcastChunkResponse, PodcastEpisodeCreate, PodcastEpisodeUpdate, PodcastEpisodeResponse, PodcastTranscriptCreate, PodcastTranscriptResponse
 
 router = APIRouter(prefix="/podcasts", tags=["podcasts"])
 
 
 @router.post("", response_model=PodcastEpisodeResponse)
 def create_episode(request: PodcastEpisodeCreate, db: Session = Depends(get_db)):
-    return data.add_episode(db, **request.model_dump())
+    existing = data.get_episode_by_audio_location(db, DEVELOPMENT_USER_ID, request.audio_location)
+    if existing is not None:
+        return existing
+    duration = get_episode_duration(request.podcast_details)
+    if request.chunk_interval < duration / 10000:
+        raise HTTPException(status_code=422, detail="An episode can have at most 10000 generated chunks")
+    transcript = (
+        get_japanese_transcript(request.podcast_details.id)
+        if request.podcast_details.provider == "youtube"
+        else None
+    )
+    return data.add_episode(db, DEVELOPMENT_USER_ID, duration=duration, transcript=transcript, **request.model_dump(exclude={"podcast_details"}))
+
+@router.get("", response_model=list[PodcastEpisodeResponse])
+def read_all_episodes(db : Session = Depends(get_db)):
+    return data.list_user_episodes(db, DEVELOPMENT_USER_ID)
 
 
 @router.get("/{episode_id}", response_model=PodcastEpisodeResponse)
 def read_episode(episode_id: int, db: Session = Depends(get_db)):
-    episode = data.get_episode(db, episode_id)
+    episode = data.get_episode(db, DEVELOPMENT_USER_ID, episode_id)
     if episode is None:
         raise HTTPException(status_code=404, detail="Episode not found")
     return episode
 
 
+@router.patch("/{episode_id}", response_model=PodcastEpisodeResponse)
+def update_episode(episode_id: int, request: PodcastEpisodeUpdate, db: Session = Depends(get_db)):
+    episode = data.get_episode(db, DEVELOPMENT_USER_ID, episode_id)
+    if episode is None:
+        raise HTTPException(status_code=404, detail="Episode not found")
+    episode.title = request.title
+    episode.author = request.author
+    db.commit()
+    db.refresh(episode)
+    return episode
+
+
 @router.post("/{episode_id}/chunks", response_model=PodcastChunkResponse, status_code=status.HTTP_201_CREATED)
 def create_chunk(episode_id: int, request: PodcastChunkCreate, db: Session = Depends(get_db)):
-    episode = data.get_episode(db, episode_id)
+    episode = data.get_episode(db, DEVELOPMENT_USER_ID, episode_id)
     if episode is None:
         raise HTTPException(status_code=404, detail="Episode not found")
     if request.end_time > episode.duration:
@@ -34,7 +63,7 @@ def create_chunk(episode_id: int, request: PodcastChunkCreate, db: Session = Dep
 
 @router.get("/{episode_id}/chunks", response_model=list[PodcastChunkResponse])
 def read_chunks(episode_id: int, db: Session = Depends(get_db)):
-    if data.get_episode(db, episode_id) is None:
+    if data.get_episode(db, DEVELOPMENT_USER_ID, episode_id) is None:
         raise HTTPException(status_code=404, detail="Episode not found")
     return data.list_chunks(db, DEVELOPMENT_USER_ID, episode_id)
 

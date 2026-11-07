@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, model_validator
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 class ParseJapaneseRequest(BaseModel):
     text : str
@@ -284,16 +284,40 @@ class ConjugationForm(StrEnum):
     KU_NOMINALIZATION = "ク語法"
 
 
+class PodcastLink(BaseModel):
+    provider: Literal["youtube", "spotify"]
+    id: str = Field(min_length=1)
+
+
 class PodcastEpisodeCreate(BaseModel):
     audio_location: str = Field(min_length=1)
     title: str = Field(min_length=1)
     author: str = Field(min_length=1)
-    duration: float = Field(gt=0, allow_inf_nan=False)
+    chunk_interval: float = Field(gt=0, allow_inf_nan=False, description="Chunk duration in seconds")
+    podcast_details: PodcastLink
 
 
-class PodcastEpisodeResponse(PodcastEpisodeCreate):
+class PodcastEpisodeUpdate(BaseModel):
+    title: str = Field(min_length=1)
+    author: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def strip_fields(self):
+        self.title = self.title.strip()
+        self.author = self.author.strip()
+        if not self.title or not self.author:
+            raise ValueError("Title and author cannot be blank")
+        return self
+
+
+class PodcastEpisodeResponse(BaseModel):
     model_config = {"from_attributes": True}
     id: int
+    user_id: int
+    audio_location: str
+    title: str
+    author: str
+    duration: float
 
 
 class PodcastChunkCreate(BaseModel):
@@ -322,4 +346,6 @@ class PodcastChunkResponse(PodcastChunkCreate):
     id: int
     user_id: int
     podcast_id: int
+    episode_title: str
+    episode_author: str
     transcript: PodcastTranscriptResponse | None = None

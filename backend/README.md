@@ -42,3 +42,8 @@ Using POS and commonness to rank.
 3. Sort by the total score that comes from POS matching and commonness
 
 うちに
+
+
+### Podcast duration lookup
+
+Set `YOUTUBE_API_KEY` for YouTube videos and `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` for Spotify episodes in the backend environment. `SPOTIFY_MARKET` optionally selects the Spotify market (defaults to `SG`). Episode creation reads duration from provider metadata; it does not download media.

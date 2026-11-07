@@ -1,5 +1,5 @@
-from app.main import app, DEVELOPMENT_USER_ID
-from fastapi import Depends
+from app.config import DEVELOPMENT_USER_ID
+from fastapi import APIRouter, Depends
 from app.services.japanese_vocab.parser import parse_japanese_text
 from app.services.japanese_vocab.grouping import regroup_tokens, add_db_data_to_tokens
 from app.schemas import ParseJapaneseRequest, GroupToken, UpdateFamiliarityScoreRequest, UpdateFamiliarityScoreResponse
@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.services.japanese_vocab.dictionary_expressions import find_dictionary_expressions
 
-@app.post("/jap/parse")
+router = APIRouter()
+
+@router.post("/jap/parse")
 def get_tokenized_text(request : ParseJapaneseRequest, db : Session = Depends(get_db)) -> list[GroupToken]:
     text = request.text
     tokens =  parse_japanese_text(text)
@@ -17,7 +19,7 @@ def get_tokenized_text(request : ParseJapaneseRequest, db : Session = Depends(ge
     enriched_tokens = add_db_data_to_tokens(db, grouped_tokens, DEVELOPMENT_USER_ID)
     return enriched_tokens
 
-@app.patch("/jap/update_familiarity_score")
+@router.patch("/jap/update_familiarity_score")
 def update_familiarity_score(request : UpdateFamiliarityScoreRequest, db: Session = Depends(get_db)) -> UpdateFamiliarityScoreResponse :
     new_score = request.new_score
     word_id = request.word_id
