@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import japanese_vocab, podcast
+from app.observability import RequestLoggingMiddleware
 
 app = FastAPI()
+app.add_middleware(RequestLoggingMiddleware)
 
 app.include_router(japanese_vocab.router)
 app.include_router(podcast.router)
@@ -14,4 +16,5 @@ app.add_middleware(
     allow_origins=["http://localhost:5173"],  # Use your actual frontend URL
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID"],
 )

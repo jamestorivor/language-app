@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./config";
+import { loggedFetch } from "./client";
 import type {
   CreateEpisodeRequest,
   EpisodeResponse,
@@ -11,7 +12,7 @@ async function createEpisode(
   episode: CreateEpisodeRequest,
 ): Promise<EpisodeResponse> {
   const url = new URL(API_PREFIX, API_BASE_URL);
-  return await fetch(url, {
+  return await loggedFetch("podcast.create", url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -29,7 +30,7 @@ async function createEpisode(
 
 async function getEpisodes(): Promise<EpisodeResponse[]> {
   const url = new URL(API_PREFIX, API_BASE_URL);
-  return await fetch(url).then((response) => {
+  return await loggedFetch("podcast.list", url).then((response) => {
     if (!response.ok) {
       throw new Error(`Backend response ${response.status}`);
     }
@@ -39,7 +40,7 @@ async function getEpisodes(): Promise<EpisodeResponse[]> {
 
 async function getEpisodeById(episode_id: number): Promise<EpisodeResponse> {
   const url = new URL(`${API_PREFIX}/${episode_id}`, API_BASE_URL);
-  return await fetch(url).then((response) => {
+  return await loggedFetch("podcast.getEpisode", url).then((response) => {
     if (!response.ok) {
       throw new Error(`Backend response ${response.status}`);
     }
@@ -48,7 +49,7 @@ async function getEpisodeById(episode_id: number): Promise<EpisodeResponse> {
 }
 
 async function updateEpisode(episodeId: number, details: { title: string; author: string }): Promise<EpisodeResponse> {
-  const response = await fetch(new URL(`${API_PREFIX}/${episodeId}`, API_BASE_URL), {
+  const response = await loggedFetch("podcast.update", new URL(`${API_PREFIX}/${episodeId}`, API_BASE_URL), {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(details),
@@ -60,7 +61,7 @@ async function updateEpisode(episodeId: number, details: { title: string; author
 async function getSegments(episode_id: number): Promise<SegmentResponse[]> {
   const chunk_path = `${episode_id}/chunks`;
   const url = new URL(`${API_PREFIX}/${chunk_path}`, API_BASE_URL);
-  return await fetch(url).then((response) => {
+  return await loggedFetch("podcast.listSegments", url).then((response) => {
     if (!response.ok) {
       throw new Error(`Backend response ${response.status}`);
     }
@@ -71,7 +72,7 @@ async function getSegments(episode_id: number): Promise<SegmentResponse[]> {
 async function getSegmentById(segment_id: number): Promise<SegmentResponse> {
   const chunk_path = `chunks/${segment_id}`;
   const url = new URL(`${API_PREFIX}/${chunk_path}`, API_BASE_URL);
-  return await fetch(url).then((response) => {
+  return await loggedFetch("podcast.getSegment", url).then((response) => {
     if (!response.ok) {
       throw new Error(`Backend response ${response.status}`);
     }

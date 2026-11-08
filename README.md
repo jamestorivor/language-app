@@ -29,6 +29,16 @@ API requests. Protect the deployment or add authentication before exposing real
 user data. A local `VITE_API_BASE_URL` can point the Vite development server to
 the backend origin; deployed builds should use the default same-origin API.
 
+## Logs
+
+Browser developer tools show API request status, duration, operation, and request ID,
+as well as uncaught frontend errors. In Vercel, open the backend runtime logs to
+find the same request ID in the structured request logs. Japanese parsing also
+reports token counts and time spent in each processing stage. Request bodies,
+query strings, and exception messages are not included in these application logs.
+Set the backend `LOG_LEVEL` environment variable (for example, `WARNING`) to
+reduce log volume; it defaults to `INFO`.
+
 ## Planned features
 
 1. Select and save : Select a Japanese word and save the word to your seen db.

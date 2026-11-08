@@ -1,4 +1,8 @@
+import logging
+import time
+
 from app.config import DEVELOPMENT_USER_ID
+from app.observability import log_event
 from fastapi import APIRouter, Depends
 from app.services.japanese_vocab.parser import parse_japanese_text
 from app.services.japanese_vocab.grouping import regroup_tokens, add_db_data_to_tokens
@@ -12,11 +16,20 @@ router = APIRouter()
 
 @router.post("/jap/parse")
 def get_tokenized_text(request : ParseJapaneseRequest, db : Session = Depends(get_db)) -> list[GroupToken]:
+    start = time.perf_counter()
     text = request.text
-    tokens =  parse_japanese_text(text)
+    tokens = parse_japanese_text(text)
+    tokenized_at = time.perf_counter()
     dictionary_matches = find_dictionary_expressions(db, tokens)
+    matched_at = time.perf_counter()
     grouped_tokens = regroup_tokens(text, tokens, dictionary_matches)
     enriched_tokens = add_db_data_to_tokens(db, grouped_tokens, DEVELOPMENT_USER_ID)
+    finished = time.perf_counter()
+    log_event(logging.INFO, "japanese_parse_completed", characters=len(text),
+              token_count=len(tokens), group_count=len(grouped_tokens),
+              tokenize_ms=round((tokenized_at - start) * 1000, 1),
+              match_ms=round((matched_at - tokenized_at) * 1000, 1),
+              enrich_ms=round((finished - matched_at) * 1000, 1))
     return enriched_tokens
 
 @router.patch("/jap/update_familiarity_score")

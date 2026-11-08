@@ -1,4 +1,5 @@
 """Look up episode duration from provider metadata, in seconds."""
+import logging
 import math
 import os
 import re
@@ -7,6 +8,7 @@ import requests
 from fastapi import HTTPException
 
 from app.schemas import PodcastLink
+from app.observability import log_event
 
 
 def parse_youtube_duration(value: str) -> float:
@@ -62,7 +64,13 @@ def get_episode_duration(link: PodcastLink) -> float:
         if not math.isfinite(duration) or duration <= 0:
             raise ValueError("Invalid Spotify duration")
         return duration
-    except HTTPException:
+    except HTTPException as exc:
+        log_event(logging.WARNING, "podcast_duration_failed", provider=link.provider,
+                  status=exc.status_code, error_type=type(exc).__name__)
         raise
     except (requests.RequestException, ValueError, KeyError, TypeError, IndexError) as exc:
+        response = getattr(exc, "response", None)
+        log_event(logging.ERROR, "podcast_duration_failed", provider=link.provider,
+                  provider_status=response.status_code if response is not None else None,
+                  error_type=type(exc).__name__)
         raise HTTPException(status_code=502, detail="Could not retrieve episode duration from provider") from exc
