@@ -13,8 +13,9 @@ The vocabulary panel should stay open when the page scrolls or the window resize
 The root `vercel.json` routes `/api/*` to the FastAPI service and all other
 paths to the Vite service. Browser requests use the same-origin `/api/` path;
 there are no server-to-server calls between these services and therefore no
-service bindings. The frontend's `vercel.json` provides the single-page app
-fallback for direct links and refreshes. Existing unprefixed backend routes are
+service bindings. The frontend service's rewrite provides the single-page app
+fallback for direct links and refreshes; `web-app/vercel.json` also supports a
+standalone frontend deployment. Existing unprefixed backend routes are
 retained for local and extension clients.
 
 Select **Services** as the Vercel project framework and configure `DATABASE_URL`

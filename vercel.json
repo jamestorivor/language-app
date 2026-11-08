@@ -8,13 +8,14 @@
     },
     "web-app": {
       "root": "web-app",
-      "framework": "vite"
+      "framework": "vite",
+      "rewrites": [
+        { "source": "/(.*)", "destination": "/index.html" }
+      ]
     }
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": { "service": "backend" } },
-    { "source": "/podcasts", "destination": { "service": "web-app", "path": "/index.html" } },
-    { "source": "/podcasts/(.*)", "destination": { "service": "web-app", "path": "/index.html" } },
     { "source": "/(.*)", "destination": { "service": "web-app" } }
   ]
 }
