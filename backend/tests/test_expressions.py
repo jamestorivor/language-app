@@ -58,11 +58,11 @@ def test_kamoshirenai_is_resolved_and_displayed(text, monkeypatch):
     from app.schemas import ParseJapaneseResponse
 
     monkeypatch.setattr(
-        "app.services.japanese_vocab.grouping.get_word_details",
-        lambda db, token, user_id: ParseJapaneseResponse(
+        "app.services.japanese_vocab.grouping.get_word_details_batch",
+        lambda db, tokens, user_id: [ParseJapaneseResponse(
             word_id=42, familiarity_score=0,
             senses=[{"glosses": ["might"]}],
-        ),
+        ) for _ in tokens],
     )
     groups = regroup_tokens(text, parse_japanese_text(text))
     result = add_db_data_to_tokens(None, groups, 1)[0]
@@ -75,10 +75,10 @@ def test_regular_particle_remains_hidden(monkeypatch):
     from app.schemas import ParseJapaneseResponse
 
     monkeypatch.setattr(
-        "app.services.japanese_vocab.grouping.get_word_details",
-        lambda db, token, user_id: ParseJapaneseResponse(
+        "app.services.japanese_vocab.grouping.get_word_details_batch",
+        lambda db, tokens, user_id: [ParseJapaneseResponse(
             word_id=42, familiarity_score=0, senses=[],
-        ),
+        ) for _ in tokens],
     )
     groups = regroup_tokens("か", parse_japanese_text("か"))
     assert add_db_data_to_tokens(None, groups, 1)[0].display is False

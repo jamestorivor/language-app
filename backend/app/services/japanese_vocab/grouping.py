@@ -1,5 +1,5 @@
 from app.schemas import JapaneseTokenizedResponse, MajorPOS, PartOfSpeech, GroupToken
-from app.data_access.japanese_vocab import get_word_details
+from app.data_access.japanese_vocab import get_word_details_batch
 from app.services.japanese_vocab.expressions import match_reviewed_expression
 from app.services.japanese_vocab.grammar import TE_EXTENSIONS, annotate_cross_group_grammar, annotate_grammar
 from sqlalchemy.orm import Session
@@ -203,8 +203,8 @@ def get_display_status(token : GroupToken) :
 
 def add_db_data_to_tokens(db : Session, group_tokens : list[GroupToken], user_id : int) -> list[GroupToken] :
     enriched_tokens = []
-    for token in group_tokens:
-        db_data = get_word_details(db, token, user_id)
+    details = get_word_details_batch(db, group_tokens, user_id)
+    for token, db_data in zip(group_tokens, details, strict=True):
 
         if db_data:
             token.word_id=db_data.word_id

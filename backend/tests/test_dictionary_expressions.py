@@ -90,8 +90,8 @@ def test_parse_endpoint_uses_dictionary_matches_and_returns_grammar(monkeypatch)
     db = Session({"お茶": [record(100)]})
     app.dependency_overrides[get_db] = lambda: db
     monkeypatch.setattr(
-        "app.services.japanese_vocab.grouping.get_word_details",
-        lambda session, token, user_id: ParseJapaneseResponse(word_id=1, familiarity_score=0, senses=[]),
+        "app.services.japanese_vocab.grouping.get_word_details_batch",
+        lambda session, tokens, user_id: [ParseJapaneseResponse(word_id=1, familiarity_score=0, senses=[]) for _ in tokens],
     )
     try:
         response = TestClient(app).post("/jap/parse", json={"text": "お茶を飲んでみた"})
