@@ -25,14 +25,13 @@ uses `YOUTUBE_API_KEY` for YouTube, or `SPOTIFY_CLIENT_ID` and
 `SPOTIFY_CLIENT_SECRET` for Spotify (`SPOTIFY_MARKET` is optional). Run
 `vercel dev` from the repository root to test both services together.
 
-YouTube can block transcript requests from hosting providers. If that happens,
-the backend supports a [Webshare rotating residential proxy](https://github.com/jdepoix/youtube-transcript-api#working-around-ip-bans-requestblocked-or-ipblocked-exception).
-Set `WEBSHARE_PROXY_USERNAME` and `WEBSHARE_PROXY_PASSWORD` on the backend
-service in Vercel and redeploy. These are the proxy credentials from Webshare,
-not the website account login. A suitable proxy plan is required and may incur
-charges; a proxy does not guarantee YouTube will accept every request. Without
-either variable, the backend connects directly as it does locally. Configure
-both variables together.
+YouTube captions are fetched through [FreeTranscriptAPI](https://freetranscriptapi.com/docs).
+Anonymous requests work without configuration, subject to the provider's
+per-IP and shared daily limits. Optionally set `FREETRANSCRIPT_API_KEY` in the
+backend environment to use account credits instead; keep the key server-side.
+The provider charges a credit for an authenticated lookup even when it fails.
+The requested podcast language must be available: fallback captions in another
+language are rejected. The former Webshare proxy settings are no longer used.
 
 The backend currently uses a fixed development user and does not authenticate
 API requests. Protect the deployment or add authentication before exposing real

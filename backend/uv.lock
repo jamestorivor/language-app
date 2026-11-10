@@ -83,7 +83,6 @@ dependencies = [
     { name = "sqlalchemy" },
     { name = "sudachidict-core" },
     { name = "sudachipy" },
-    { name = "youtube-transcript-api" },
 ]
 
 [package.dev-dependencies]
@@ -111,7 +110,6 @@ requires-dist = [
     { name = "sqlalchemy", specifier = ">=2.1.5" },
     { name = "sudachidict-core", specifier = ">=20261015" },
     { name = "sudachipy", specifier = ">=0.7.0" },
-    { name = "youtube-transcript-api", specifier = ">=1.2.4" },
 ]
 
 [package.metadata.requires-dev]
@@ -389,15 +387,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ec/9d/10179b0a08cafbee9ea1efd7f1d93ab336e24f05ca58ee413269933ce061/cymem-2.0.16-cp315-cp315t-musllinux_1_2_x86_64.whl", hash = "sha256:37a41290dbac4a827ddbb081f88dcd37bcb66a975ec28652cc44c6347ab53b31", size = 302281, upload-time = "2026-10-24T17:50:32.898Z" },
     { url = "https://files.pythonhosted.org/packages/be/7d/aecd1d7e5de677b3c13f6af42a15562fcc7b17e629f8905a3ee9bfc9e4d4/cymem-2.0.16-cp315-cp315t-win_amd64.whl", hash = "sha256:fe206b31d4e6f82b2879d1b9374cc1de9a5a3083f464e8bada14831e3bf2e243", size = 45458, upload-time = "2026-10-24T17:50:34.3Z" },
     { url = "https://files.pythonhosted.org/packages/98/7b/75332323360c8b1ccffb191b7e70f7c05007a4ba98f2728ed2b81f610d68/cymem-2.0.16-cp315-cp315t-win_arm64.whl", hash = "sha256:6ebe3d92acb1bf06d1834290a733853cb552cd2db63ff6f66afe462588ce9f82", size = 42977, upload-time = "2026-10-24T17:50:35.535Z" },
-]
-
-[[package]]
-name = "defusedxml"
-version = "0.7.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0f/d5/c66da9b79e5bdb124974bfe172b4daf3c984ebd9c2a06e2b8a4dc7331c72/defusedxml-0.7.1.tar.gz", hash = "sha256:1bb3032db185915b62d7c6209c5a8792be6a32ab2fedacc84e01b52c51aa3e69", size = 75520, upload-time = "2021-03-08T10:59:26.269Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/07/6c/aa3f2f849e01cb6a001cd8554a88d4c77c5c1a31c95bdf1cf9301e6d9ef4/defusedxml-0.7.1-py2.py3-none-any.whl", hash = "sha256:a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61", size = 25604, upload-time = "2021-03-08T10:59:24.45Z" },
 ]
 
 [[package]]
@@ -2489,17 +2478,4 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/0d/d9/aef3035a3e3d918eb51e7db454af9e06919f0c5208fa0a9315548fef7734/wrapt-2.5.2-cp315-cp315t-win_amd64.whl", hash = "sha256:7f89423965b23aa62a90bf21c20353056a829ca9a60c01fde9aec9876c99392e", size = 110099, upload-time = "2026-10-29T23:06:19.293Z" },
     { url = "https://files.pythonhosted.org/packages/5f/ea/56eddba6249fae5361b53eb62e2e25ad86cabec4632d943d356aba8dea1b/wrapt-2.5.2-cp315-cp315t-win_arm64.whl", hash = "sha256:fa642d3781c061579cb138773add4a55b16f99de9ebc41603e89a756cf9e62c6", size = 106397, upload-time = "2026-10-29T23:06:20.826Z" },
     { url = "https://files.pythonhosted.org/packages/77/8b/1ea57b936b70f98e8e7620a352578096d778dbee95b262f73c066d210ffb/wrapt-2.5.2-py3-none-any.whl", hash = "sha256:61eb54e9540ea522c2c4752a57549a83d3c67e6704ed708403d28e067aaf90f0", size = 82025, upload-time = "2026-10-29T23:06:38.56Z" },
-]
-
-[[package]]
-name = "youtube-transcript-api"
-version = "1.2.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "defusedxml" },
-    { name = "requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/60/43/4104185a2eaa839daa693b30e15c37e7e58795e8e09ec414f22b3db54bec/youtube_transcript_api-1.2.4.tar.gz", hash = "sha256:b72d0e96a335df599d67cee51d49e143cff4f45b84bcafc202ff51291603ddcd", size = 469839, upload-time = "2026-01-29T09:09:17.088Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/be/95/129ea37efd6cd6ed00f62baae6543345c677810b8a3bf0026756e1d3cf3c/youtube_transcript_api-1.2.4-py3-none-any.whl", hash = "sha256:03878759356da5caf5edac77431780b91448fb3d8c21d4496015bdc8a7bc43ff", size = 485227, upload-time = "2026-01-29T09:09:15.427Z" },
 ]

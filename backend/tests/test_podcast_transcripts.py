@@ -1,51 +1,86 @@
 import pytest
+import requests
+from fastapi import HTTPException
 
 from app.services.podcast import youtube_connect
 
 
+class Response:
+    def __init__(self, status_code=200, data=None):
+        self.status_code = status_code
+        self.data = data
+
+    def json(self):
+        if isinstance(self.data, Exception):
+            raise self.data
+        return self.data
+
+
 @pytest.mark.parametrize("language", ["ja", "en"])
-def test_youtube_fetch_requests_the_selected_language(monkeypatch, language):
+def test_fetch_preserves_caption_timing_and_requested_language(monkeypatch, language):
+    monkeypatch.delenv("FREETRANSCRIPT_API_KEY", raising=False)
+    captions = [{"text": "example", "start": 12.3, "duration": 2.1}]
     calls = []
 
-    class Transcript:
-        def to_raw_data(self):
-            return [{"text": "example", "start": 0}]
+    def get(url, **kwargs):
+        calls.append((url, kwargs))
+        return Response(data={"language": language, "transcript": captions})
 
-    def fetch(video_id, languages):
-        calls.append((video_id, languages))
-        return Transcript()
-
-    monkeypatch.setattr(youtube_connect, "youtube_api", lambda: type("Api", (), {"fetch": staticmethod(fetch)})())
-    assert youtube_connect.get_transcript("video", language) == [{"text": "example", "start": 0}]
-    assert calls == [("video", [language])]
+    monkeypatch.setattr(youtube_connect.requests, "get", get)
+    assert youtube_connect.get_transcript("video123", language) == captions
+    assert calls == [(youtube_connect.TRANSCRIPT_URL, {
+        "params": {"video_url": "video123", "lang": language}, "headers": {}, "timeout": 20,
+    })]
 
 
-def test_youtube_api_uses_webshare_when_configured(monkeypatch):
-    monkeypatch.setenv("WEBSHARE_PROXY_USERNAME", "example-user")
-    monkeypatch.setenv("WEBSHARE_PROXY_PASSWORD", "example-password")
-    monkeypatch.setattr(youtube_connect, "YouTubeTranscriptApi", lambda **kwargs: kwargs)
+def test_api_key_is_sent_only_as_authorization_header(monkeypatch):
+    monkeypatch.setenv("FREETRANSCRIPT_API_KEY", "example-key")
+    calls = []
+    def get(url, **kwargs):
+        calls.append(kwargs)
+        return Response(data={"language": "en-US", "transcript": [{"text": "hello", "start": 0}]})
+    monkeypatch.setattr(youtube_connect.requests, "get", get)
 
-    api = youtube_connect.youtube_api()
-
-    assert isinstance(api["proxy_config"], youtube_connect.WebshareProxyConfig)
-    assert api["proxy_config"].proxy_username == "example-user"
-    assert api["proxy_config"].proxy_password == "example-password"
-
-
-def test_youtube_api_uses_direct_connection_without_proxy(monkeypatch):
-    monkeypatch.delenv("WEBSHARE_PROXY_USERNAME", raising=False)
-    monkeypatch.delenv("WEBSHARE_PROXY_PASSWORD", raising=False)
-    monkeypatch.setattr(youtube_connect, "YouTubeTranscriptApi", lambda **kwargs: kwargs)
-
-    assert youtube_connect.youtube_api() == {}
+    assert youtube_connect.get_transcript("video123", "en")[0]["text"] == "hello"
+    assert calls[0]["headers"] == {"Authorization": "Bearer example-key"}
+    assert calls[0]["params"] == {"video_url": "video123", "lang": "en"}
 
 
-@pytest.mark.parametrize("missing", ["WEBSHARE_PROXY_USERNAME", "WEBSHARE_PROXY_PASSWORD"])
-def test_youtube_api_rejects_incomplete_proxy_configuration(monkeypatch, missing):
-    monkeypatch.setenv("WEBSHARE_PROXY_USERNAME", "example-user")
-    monkeypatch.setenv("WEBSHARE_PROXY_PASSWORD", "example-password")
-    monkeypatch.delenv(missing)
+def test_other_language_fallback_is_rejected(monkeypatch):
+    monkeypatch.setattr(youtube_connect.requests, "get", lambda *args, **kwargs: Response(
+        data={"language": "en", "transcript": [{"text": "hello", "start": 0}]}
+    ))
+    with pytest.raises(HTTPException) as error:
+        youtube_connect.get_transcript("video123", "ja")
+    assert error.value.status_code == 404
+    assert "Japanese" in error.value.detail
 
-    with pytest.raises(youtube_connect.HTTPException) as error:
-        youtube_connect.youtube_api()
-    assert error.value.status_code == 503
+
+@pytest.mark.parametrize(("provider_status", "expected_status"), [(404, 404), (429, 503), (401, 503), (402, 503), (500, 502)])
+def test_provider_errors_do_not_return_a_transcript(monkeypatch, provider_status, expected_status):
+    monkeypatch.setattr(youtube_connect.requests, "get", lambda *args, **kwargs: Response(provider_status))
+    with pytest.raises(HTTPException) as error:
+        youtube_connect.get_transcript("video123", "en")
+    assert error.value.status_code == expected_status
+
+
+@pytest.mark.parametrize("payload", [ValueError("invalid JSON"), {}, {"language": "en", "transcript": "text"},
+    {"language": "en", "transcript": [{"text": "hi", "start": "1"}]},
+    {"language": "en", "transcript": [{"text": "hi", "start": float("nan")}]},
+    {"language": "en", "transcript": [{"text": "hi", "start": -1}]},
+])
+def test_malformed_provider_response_is_rejected(monkeypatch, payload):
+    monkeypatch.setattr(youtube_connect.requests, "get", lambda *args, **kwargs: Response(data=payload))
+    with pytest.raises(HTTPException) as error:
+        youtube_connect.get_transcript("video123", "en")
+    assert error.value.status_code == 502
+
+
+@pytest.mark.parametrize(("exception", "status"), [(requests.Timeout(), 504), (requests.ConnectionError(), 502)])
+def test_network_errors_are_reported(monkeypatch, exception, status):
+    def fail(*args, **kwargs):
+        raise exception
+    monkeypatch.setattr(youtube_connect.requests, "get", fail)
+    with pytest.raises(HTTPException) as error:
+        youtube_connect.get_transcript("video123", "en")
+    assert error.value.status_code == status
