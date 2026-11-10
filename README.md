@@ -25,6 +25,15 @@ uses `YOUTUBE_API_KEY` for YouTube, or `SPOTIFY_CLIENT_ID` and
 `SPOTIFY_CLIENT_SECRET` for Spotify (`SPOTIFY_MARKET` is optional). Run
 `vercel dev` from the repository root to test both services together.
 
+YouTube can block transcript requests from hosting providers. If that happens,
+the backend supports a [Webshare rotating residential proxy](https://github.com/jdepoix/youtube-transcript-api#working-around-ip-bans-requestblocked-or-ipblocked-exception).
+Set `WEBSHARE_PROXY_USERNAME` and `WEBSHARE_PROXY_PASSWORD` on the backend
+service in Vercel and redeploy. These are the proxy credentials from Webshare,
+not the website account login. A suitable proxy plan is required and may incur
+charges; a proxy does not guarantee YouTube will accept every request. Without
+either variable, the backend connects directly as it does locally. Configure
+both variables together.
+
 The backend currently uses a fixed development user and does not authenticate
 API requests. Protect the deployment or add authentication before exposing real
 user data. A local `VITE_API_BASE_URL` can point the Vite development server to
