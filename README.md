@@ -71,6 +71,11 @@ metadata Vercel uses to calculate bundle size. The build image needs GNU
 `strip`; a custom Vercel build command must run this script after dependency
 installation. Development tools, including Alembic and pytest, are installed
 with the default `uv sync` but excluded from production dependencies.
+The Linux spaCy wheels are pinned as direct sources so Vercel bundles the
+stripped package instead of downloading the full wheel during a cold start.
+This leaves enough temporary disk space to install Sudachi's core dictionary.
+When upgrading spaCy, update its version and Linux wheel URLs together, then
+regenerate `backend/uv.lock`.
 
 ## Logs
 
