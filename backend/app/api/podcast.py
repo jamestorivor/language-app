@@ -44,6 +44,15 @@ def read_episode(episode_id: int, db: Session = Depends(get_db)):
     return episode
 
 
+@router.delete("/{episode_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_episode(episode_id: int, db: Session = Depends(get_db)):
+    episode = data.get_episode(db, DEVELOPMENT_USER_ID, episode_id)
+    if episode is None:
+        raise HTTPException(status_code=404, detail="Episode not found")
+    data.delete_episode(db, episode)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.patch("/{episode_id}", response_model=PodcastEpisodeResponse)
 def update_episode(episode_id: int, request: PodcastEpisodeUpdate, db: Session = Depends(get_db)):
     episode = data.get_episode(db, DEVELOPMENT_USER_ID, episode_id)

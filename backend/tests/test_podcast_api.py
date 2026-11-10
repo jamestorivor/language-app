@@ -64,6 +64,27 @@ def test_episode_and_chunk_lifecycle(client):
     assert len(client.get(f'/podcasts/{episode_id}/chunks').json()) == 3
 
 
+def test_delete_episode_removes_segments_and_transcripts(client):
+    payload = {
+        'audio_location': 'delete-audio', 'title': 'Episode', 'author': 'Author',
+        'chunk_interval': 20, 'podcast_details': {'provider': 'youtube', 'id': 'test'},
+    }
+    episode_id = client.post('/api/podcasts', json=payload).json()['id']
+    kept_id = client.post('/api/podcasts', json={**payload, 'audio_location': 'keep-audio'}).json()['id']
+    chunk_ids = [chunk['id'] for chunk in client.get(f'/api/podcasts/{episode_id}/chunks').json()]
+    assert len(chunk_ids) == 3
+    assert client.delete(f'/api/podcasts/{episode_id}').status_code == 204
+    assert client.get(f'/podcasts/{episode_id}').status_code == 404
+    assert [episode['id'] for episode in client.get('/podcasts').json()] == [kept_id]
+    assert client.delete(f'/podcasts/{episode_id}').status_code == 404
+    with next(iter(app.dependency_overrides[get_db]())) as session:
+        assert session.query(PodcastChunk).filter(PodcastChunk.id.in_(chunk_ids)).count() == 0
+        assert session.query(PodcastTranscript).filter(PodcastTranscript.podcast_chunk_id.in_(chunk_ids)).count() == 0
+        assert session.query(PodcastChunk).count() == 3
+        assert session.query(PodcastTranscript).count() == 3
+    assert client.post('/podcasts', json=payload).status_code == 200
+
+
 def test_public_api_prefix_preserves_podcast_routes(client):
     payload = {'audio_location': 'https://example.com/prefixed', 'title': 'Episode',
                'author': 'Author', 'chunk_interval': 20,
@@ -121,6 +142,7 @@ def test_episodes_are_scoped_to_current_user(client):
         chunk_id = chunk.id
 
     assert client.get(f'/podcasts/{other_id}').status_code == 404
+    assert client.delete(f'/podcasts/{other_id}').status_code == 404
     assert client.get(f'/podcasts/{other_id}/chunks').status_code == 404
     assert client.post(f'/podcasts/{other_id}/chunks', json={'start_time': 0, 'end_time': 1}).status_code == 404
     assert client.get(f'/podcasts/chunks/{chunk_id}').status_code == 404

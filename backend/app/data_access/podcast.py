@@ -1,6 +1,6 @@
 from math import ceil
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -53,6 +53,14 @@ def get_episode(session: Session, user_id: int, episode_id: int):
 
 def list_user_episodes(session : Session, user_id : int):
     return list(session.scalars(select(PodcastEpisode).where(PodcastEpisode.user_id == user_id)).all())
+
+
+def delete_episode(session: Session, episode: PodcastEpisode):
+    chunk_ids = select(PodcastChunk.id).where(PodcastChunk.podcast_id == episode.id)
+    session.execute(delete(PodcastTranscript).where(PodcastTranscript.podcast_chunk_id.in_(chunk_ids)))
+    session.execute(delete(PodcastChunk).where(PodcastChunk.podcast_id == episode.id))
+    session.delete(episode)
+    session.commit()
 
 
 def create_new_chunk(session: Session, user_id: int, podcast_id: int, start_time: float, end_time: float):

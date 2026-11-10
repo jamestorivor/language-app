@@ -59,6 +59,13 @@ async function updateEpisode(episodeId: number, details: { title: string; author
   return response.json();
 }
 
+async function deleteEpisode(episodeId: number): Promise<void> {
+  const response = await loggedFetch("podcast.delete", new URL(`${API_PREFIX}/${episodeId}`, API_BASE_URL), {
+    method: "DELETE",
+  });
+  if (!response.ok) throw new Error(`Could not delete podcast (response ${response.status}).`);
+}
+
 async function getSegments(episode_id: number): Promise<SegmentResponse[]> {
   const chunk_path = `${episode_id}/chunks`;
   const url = new URL(`${API_PREFIX}/${chunk_path}`, API_BASE_URL);
@@ -88,4 +95,5 @@ export {
   getEpisodeById,
   getSegmentById,
   updateEpisode,
+  deleteEpisode,
 };
