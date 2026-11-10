@@ -13,11 +13,11 @@ def get_episode_by_audio_location(session: Session, user_id: int, audio_location
     ))
 
 
-def add_episode(session: Session, user_id: int, audio_location: str, title: str, author: str, duration: float, chunk_interval: float, transcript: list[dict] | None = None):
+def add_episode(session: Session, user_id: int, audio_location: str, title: str, author: str, duration: float, chunk_interval: float, transcript: list[dict] | None = None, language: str = "ja"):
     episode = get_episode_by_audio_location(session, user_id, audio_location)
     if episode is not None:
         return episode
-    episode = PodcastEpisode(user_id=user_id, audio_location=audio_location, title=title, author=author, duration=duration)
+    episode = PodcastEpisode(user_id=user_id, audio_location=audio_location, title=title, author=author, duration=duration, language=language)
     session.add(episode)
     try:
         session.flush()

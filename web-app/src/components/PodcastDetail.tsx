@@ -60,7 +60,7 @@ function SegmentDetail({ segmentId }: { segmentId: string | undefined }) {
             <h2 className="text-lg font-semibold tracking-tight">Player</h2>
             <SegmentPlayer segment={segment} />
           </section>
-          <InteractiveTranscript key={segment.id} text={segment.transcript?.text ?? ""} />
+          <InteractiveTranscript key={`${segment.id}-${segment.episode_language}`} text={segment.transcript?.text ?? ""} language={segment.episode_language} />
         </div>
       </div>
     );

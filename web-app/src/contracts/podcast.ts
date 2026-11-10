@@ -1,5 +1,7 @@
 import type { PodcastLink } from "../utils/urlParser";
 
+export type PodcastLanguage = "ja" | "en";
+
 // Matches the podcast API schemas in backend/app/schemas.py.
 export type CreateEpisodeRequest = {
   audio_location: string;
@@ -7,6 +9,7 @@ export type CreateEpisodeRequest = {
   author: string;
   chunk_interval: number;
   podcast_details: PodcastLink;
+  language: PodcastLanguage;
 };
 
 export type EpisodeResponse = Omit<
@@ -39,6 +42,7 @@ export type SegmentResponse = CreateSegmentRequest & {
   podcast_id: number;
   episode_title: string;
   episode_author: string;
+  episode_language: PodcastLanguage;
   transcript: TranscriptResponse | null;
 };
 

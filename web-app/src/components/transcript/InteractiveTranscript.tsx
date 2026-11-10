@@ -7,7 +7,7 @@ import type { TokenGroup } from "../../contracts/japanese";
 import "./InteractiveTranscript.css";
 import WordPanel from "./WordPanel";
 
-export default function InteractiveTranscript({ text }: { text: string }) {
+export default function InteractiveTranscript({ text, language }: { text: string; language: "ja" | "en" }) {
   const [tokens, setTokens] = useState<TokenGroup[] | null>(null);
   const [selection, setSelection] = useState<{
     index: number;
@@ -21,8 +21,12 @@ export default function InteractiveTranscript({ text }: { text: string }) {
 
   useEffect(() => {
     let active = true;
+    setTokens(null);
+    setSelection(null);
+    setError("");
+    setPage(0);
     if (!text) return;
-    fetchJapaneseTokenGroups(text)
+    fetchJapaneseTokenGroups(text, language)
       .then((groups) => {
         if (active) setTokens(groups);
       })
@@ -32,7 +36,7 @@ export default function InteractiveTranscript({ text }: { text: string }) {
     return () => {
       active = false;
     };
-  }, [text, attempt]);
+  }, [text, attempt, language]);
 
   async function changeScore(wordId: number, score: number) {
     if (saving || !tokens) return;
@@ -52,7 +56,7 @@ export default function InteractiveTranscript({ text }: { text: string }) {
     // A word selected from the list may move off the current page immediately.
     if (selection?.source === "list") setSelection(null);
     try {
-      const result = await updateWordFamiliarity(wordId, score);
+      const result = await updateWordFamiliarity(wordId, score, language);
       setTokens(
         (current) =>
           current?.map((token) =>
@@ -189,7 +193,7 @@ export default function InteractiveTranscript({ text }: { text: string }) {
             <p className="mt-5 text-sm text-stone-500">No words on this page.</p>
           ) : (
             <div
-              lang="ja"
+              lang={language}
               className="mt-5 flex flex-wrap gap-2 text-base leading-normal tracking-wide sm:text-lg"
             >
               {pageWords.map(({ token, index }) => (
@@ -222,7 +226,7 @@ export default function InteractiveTranscript({ text }: { text: string }) {
           {text ? (
             <div className="mt-6">
               <p
-                lang="ja"
+                lang={language}
                 className="whitespace-pre-wrap break-words text-justify text-base leading-[2] tracking-wide text-stone-800 sm:text-lg"
               >
                 {tokens ? (
@@ -267,6 +271,7 @@ export default function InteractiveTranscript({ text }: { text: string }) {
       {selected && selection && (
         <WordPanel
           word={selected}
+          language={language}
           anchor={selection.anchor}
           saving={saving}
           onClose={() => setSelection(null)}

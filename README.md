@@ -30,6 +30,40 @@ API requests. Protect the deployment or add authentication before exposing real
 user data. A local `VITE_API_BASE_URL` can point the Vite development server to
 the backend origin; deployed builds should use the default same-origin API.
 
+## English vocabulary
+
+English reading uses spaCy's small English pipeline for word forms and the
+EJDict-hand English-to-Japanese dictionary. On an existing database already at
+the Alembic baseline, set `DATABASE_URL` to the intended database, then from
+`backend` run:
+
+```sh
+uv sync
+uv run alembic upgrade head
+uv run python -m app.db.import_english_dictionary
+```
+
+The migration creates the English dictionary and separate user familiarity
+tables. The importer reads the included `data/EJDict.zip` and can be rerun:
+it updates existing headwords while preserving their IDs and familiarity, and
+does not delete headwords removed from a later source. An alternate EJDict
+source archive (containing `src/*.txt`) or UTF-8 tab-separated file can be
+passed as an argument. The included archive is from
+[EJDict-hand](https://github.com/kujirahand/EJDict), distributed by its
+maintainers under CC0; SHA-256:
+`28ebeb2596e12a9c98691357b0e88a9888ee5ab6003e626df6373096645fce11`.
+
+Choose a podcast's language when adding it; the library can be filtered by
+language and each transcript uses the matching parser automatically. Existing
+podcasts default to Japanese; edit their details to correct the language.
+Changing the language does not replace an existing transcript. Select English
+in the browser extension before parsing an English page. Dictionary alternatives
+are separated for display, and EJDict's usage annotations are preserved. Exact contiguous
+dictionary expressions are supported; separated phrasal verbs and automatic
+sense disambiguation are not currently resolved. Reload an extension page to
+change the selected language. English scores are independent of Japanese
+scores and, like the existing feature, currently use the fixed development user.
+
 ## Logs
 
 Browser developer tools show API request status, duration, operation, and request ID,

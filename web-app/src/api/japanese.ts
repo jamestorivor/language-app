@@ -5,8 +5,9 @@ import type { UpdateFamiliarityScoreResponse } from "../contracts/japanese";
 
 async function fetchJapaneseTokenGroups(
   text: string,
+  language: "ja" | "en" = "ja",
 ): Promise<ParseJapaneseResponse> {
-  const url = new URL("jap/parse", API_BASE_URL);
+  const url = new URL(`${language === "en" ? "eng" : "jap"}/parse`, API_BASE_URL);
   return await loggedFetch("japanese.parse", url, {
     method: "POST",
     headers: {
@@ -27,8 +28,9 @@ async function fetchJapaneseTokenGroups(
 async function updateWordFamiliarity(
   word_id: number,
   new_score: number,
+  language: "ja" | "en" = "ja",
 ): Promise<UpdateFamiliarityScoreResponse> {
-  const url = new URL("jap/update_familiarity_score", API_BASE_URL);
+  const url = new URL(`${language === "en" ? "eng" : "jap"}/update_familiarity_score`, API_BASE_URL);
   return await loggedFetch("japanese.updateFamiliarity", url, {
     method: "PATCH",
     headers: {

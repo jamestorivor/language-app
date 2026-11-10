@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from app.services.podcast.youtube_connect import get_japanese_transcript
+from app.services.podcast.youtube_connect import get_transcript
 from app.services.podcast.duration import get_episode_duration
 from app.data_access import podcast as data
 from app.db.session import get_db
@@ -15,16 +15,21 @@ router = APIRouter(prefix="/podcasts", tags=["podcasts"])
 def create_episode(request: PodcastEpisodeCreate, db: Session = Depends(get_db)):
     existing = data.get_episode_by_audio_location(db, DEVELOPMENT_USER_ID, request.audio_location)
     if existing is not None:
+        if existing.language != request.language:
+            raise HTTPException(status_code=409, detail="This podcast is already in your library with a different language. Edit its details to change the language.")
         return existing
     duration = get_episode_duration(request.podcast_details)
     if request.chunk_interval < duration / 10000:
         raise HTTPException(status_code=422, detail="An episode can have at most 10000 generated chunks")
     transcript = (
-        get_japanese_transcript(request.podcast_details.id)
+        get_transcript(request.podcast_details.id, request.language)
         if request.podcast_details.provider == "youtube"
         else None
     )
-    return data.add_episode(db, DEVELOPMENT_USER_ID, duration=duration, transcript=transcript, **request.model_dump(exclude={"podcast_details"}))
+    episode = data.add_episode(db, DEVELOPMENT_USER_ID, duration=duration, transcript=transcript, **request.model_dump(exclude={"podcast_details"}))
+    if episode.language != request.language:
+        raise HTTPException(status_code=409, detail="This podcast is already in your library with a different language. Edit its details to change the language.")
+    return episode
 
 @router.get("", response_model=list[PodcastEpisodeResponse])
 def read_all_episodes(db : Session = Depends(get_db)):
@@ -46,6 +51,8 @@ def update_episode(episode_id: int, request: PodcastEpisodeUpdate, db: Session =
         raise HTTPException(status_code=404, detail="Episode not found")
     episode.title = request.title
     episode.author = request.author
+    if request.language is not None:
+        episode.language = request.language
     db.commit()
     db.refresh(episode)
     return episode

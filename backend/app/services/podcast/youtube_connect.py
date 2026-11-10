@@ -5,9 +5,9 @@ from youtube_transcript_api import YouTubeTranscriptApi, VideoUnavailable, NoTra
 from fastapi import HTTPException
 ytt_api = YouTubeTranscriptApi()
 
-def get_japanese_transcript(video_id : str):
+def get_transcript(video_id: str, language: str):
     try:
-        fetched_transcript = ytt_api.fetch(video_id, languages=['ja']).to_raw_data()
+        fetched_transcript = ytt_api.fetch(video_id, languages=[language]).to_raw_data()
         return fetched_transcript
     except VideoUnavailable as error:
         log_event(logging.WARNING, "podcast_transcript_failed", provider="youtube", error_type=type(error).__name__)
@@ -16,7 +16,7 @@ def get_japanese_transcript(video_id : str):
         log_event(logging.WARNING, "podcast_transcript_failed", provider="youtube", error_type=type(error).__name__)
         raise HTTPException(
             status_code=404,
-            detail="This video has no Japanese transcript.",
+            detail=f"This video has no {'English' if language == 'en' else 'Japanese'} transcript.",
         ) from error
     except TranscriptsDisabled as error:
         log_event(logging.WARNING, "podcast_transcript_failed", provider="youtube", error_type=type(error).__name__)

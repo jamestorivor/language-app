@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import type {
   EpisodeResponse,
   ListSegmentResponse,
+  PodcastLanguage,
 } from "../contracts/podcast";
 import { getEpisodeById, getSegments, updateEpisode } from "../api/podcast";
 import { formatTime } from "../utils/formatTime";
@@ -57,6 +58,7 @@ export default function PodcastSegments() {
     const form = new FormData(event.currentTarget);
     const title = String(form.get("title") ?? "").trim();
     const author = String(form.get("author") ?? "").trim();
+    const language: PodcastLanguage = form.get("language") === "en" ? "en" : "ja";
     if (!title || !author) {
       setEditError("Please enter a title and author.");
       return;
@@ -64,7 +66,7 @@ export default function PodcastSegments() {
     setSaving(true);
     setEditError("");
     try {
-      setEpisode(await updateEpisode(id, { title, author }));
+      setEpisode(await updateEpisode(id, { title, author, language }));
       setEditing(false);
     } catch {
       setEditError("Could not save changes. Please try again.");
@@ -87,7 +89,7 @@ export default function PodcastSegments() {
   return (
     <div className="mx-auto max-w-4xl">
       <Link
-        to="/podcasts"
+        to={`/podcasts?language=${episode?.language ?? "ja"}`}
         className="text-sm font-semibold text-emerald-800 hover:text-emerald-950 hover:underline"
       >
         ← My podcasts
@@ -117,6 +119,14 @@ export default function PodcastSegments() {
                 <label htmlFor="edit-author" className="block text-sm font-semibold text-stone-700">Author</label>
                 <input id="edit-author" name="author" defaultValue={episode.author} required className="mt-2 w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:outline-2 focus:outline-emerald-800" />
               </div>
+              <div>
+                <label htmlFor="edit-language" className="block text-sm font-semibold text-stone-700">Podcast language</label>
+                <select id="edit-language" name="language" defaultValue={episode.language} className="mt-2 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 focus:outline-2 focus:outline-emerald-800">
+                  <option value="ja">Japanese</option>
+                  <option value="en">English</option>
+                </select>
+                <p className="mt-2 text-sm text-stone-500">Changing the language changes how existing transcripts are read; it does not replace their text.</p>
+              </div>
               {editError && <p role="alert" className="text-sm text-red-700">{editError}</p>}
               <div className="flex flex-wrap gap-3">
                 <button type="submit" disabled={saving} className="rounded-lg bg-emerald-900 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">{saving ? "Saving…" : "Save changes"}</button>
@@ -135,7 +145,7 @@ export default function PodcastSegments() {
           {segements.map((segment, index) => (
             <li key={segment.id}>
               <Link
-                state={{ segment: episode ? { ...segment, episode_title: episode.title, episode_author: episode.author } : segment }}
+                state={{ segment: episode ? { ...segment, episode_title: episode.title, episode_author: episode.author, episode_language: episode.language } : segment }}
                 to={`/podcasts/segments/${segment.id}`}
                 className="group flex h-full items-center gap-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm transition hover:border-emerald-700/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 sm:p-5"
               >

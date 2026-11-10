@@ -1,11 +1,12 @@
 import { useState, type SubmitEvent } from "react";
-import type { CreateEpisodeRequest } from "../contracts/podcast";
+import type { CreateEpisodeRequest, PodcastLanguage } from "../contracts/podcast";
 import { createEpisode } from "../api/podcast";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import parsePodcastLink from "../utils/urlParser";
 import type { PodcastLink } from "../utils/urlParser";
 function AddPodcastCard() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [errorMessage, setErrorMessage] = useState("");
 
   async function handleAddButtonClick(event: SubmitEvent<HTMLFormElement>) {
@@ -33,6 +34,7 @@ function AddPodcastCard() {
       author: creator,
       chunk_interval: segmentSize * 60,
       podcast_details: podcastLink,
+      language: form.get("language") === "en" ? "en" : "ja",
     };
 
     try {
@@ -58,6 +60,14 @@ function AddPodcastCard() {
         </p>
 
         <form className="mt-6 space-y-5" onSubmit={handleAddButtonClick}>
+          <div>
+            <label htmlFor="podcast-language" className="block text-sm font-medium text-stone-700">Podcast language</label>
+            <select id="podcast-language" name="language" defaultValue={(searchParams.get("language") === "en" ? "en" : "ja") satisfies PodcastLanguage}
+              className="mt-2 block w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 focus:border-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-200">
+              <option value="ja">Japanese</option>
+              <option value="en">English</option>
+            </select>
+          </div>
           <div>
             <label
               htmlFor="podcast-url"

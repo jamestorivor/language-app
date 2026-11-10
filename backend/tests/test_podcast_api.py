@@ -13,7 +13,7 @@ from app.main import app
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setattr("app.api.podcast.get_episode_duration", lambda url: 60.0)
-    monkeypatch.setattr("app.api.podcast.get_japanese_transcript", lambda video_id: [])
+    monkeypatch.setattr("app.api.podcast.get_transcript", lambda video_id, language: [])
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 
     @event.listens_for(engine, "connect")
@@ -185,33 +185,65 @@ def test_invalid_podcast_link(client, details):
 
 def test_youtube_transcript_is_saved_by_start_time(client, monkeypatch):
     calls = []
-    def get_transcript(video_id):
-        calls.append(video_id)
+    def get_transcript(video_id, language):
+        calls.append((video_id, language))
         return [
             {"text": "first", "start": 0.0, "duration": 2.0},
             {"text": "crosses boundary", "start": 19.5, "duration": 2.0},
             {"text": "next", "start": 20.0, "duration": 1.0},
             {"text": "outside", "start": 60.0, "duration": 1.0},
         ]
-    monkeypatch.setattr("app.api.podcast.get_japanese_transcript", get_transcript)
+    monkeypatch.setattr("app.api.podcast.get_transcript", get_transcript)
     episode = client.post("/podcasts", json={
         "audio_location": "audio", "title": "Episode", "author": "Author",
         "chunk_interval": 20, "podcast_details": {"provider": "youtube", "id": "video123"},
     })
     assert episode.status_code == 200
     chunks = client.get(f"/podcasts/{episode.json()['id']}/chunks").json()
-    assert calls == ["video123"]
+    assert calls == [("video123", "ja")]
     assert [chunk["transcript"]["text"] for chunk in chunks] == ["first crosses boundary", "next", ""]
 
 
 def test_transcript_fetch_failure_does_not_save_episode(client, monkeypatch):
     from fastapi import HTTPException
-    def fail(_video_id):
+    def fail(_video_id, _language):
         raise HTTPException(status_code=404, detail="No transcript")
-    monkeypatch.setattr("app.api.podcast.get_japanese_transcript", fail)
+    monkeypatch.setattr("app.api.podcast.get_transcript", fail)
     response = client.post("/podcasts", json={
         "audio_location": "audio", "title": "Episode", "author": "Author",
         "chunk_interval": 20, "podcast_details": {"provider": "youtube", "id": "video123"},
     })
     assert response.status_code == 404
     assert client.get("/podcasts").json() == []
+
+
+def test_podcast_language_is_persisted_and_returned_for_segments(client, monkeypatch):
+    calls = []
+    monkeypatch.setattr("app.api.podcast.get_transcript", lambda video_id, language: calls.append((video_id, language)) or [{"text": "Hello", "start": 0}])
+    payload = {"audio_location": "english-audio", "title": "English", "author": "Author", "chunk_interval": 60,
+               "podcast_details": {"provider": "youtube", "id": "video"}, "language": "en"}
+    response = client.post("/podcasts", json=payload)
+    assert response.status_code == 200
+    episode = response.json()
+    assert episode["language"] == "en"
+    assert calls == [("video", "en")]
+    assert client.get("/podcasts").json()[0]["language"] == "en"
+    assert client.get(f"/podcasts/{episode['id']}").json()["language"] == "en"
+    segment = client.get(f"/podcasts/{episode['id']}/chunks").json()[0]
+    assert segment["episode_language"] == "en"
+    assert segment["transcript"]["text"] == "Hello"
+    assert client.get(f"/podcasts/chunks/{segment['id']}").json()["episode_language"] == "en"
+    assert client.post("/podcasts", json={**payload, "language": "ja"}).status_code == 409
+
+    updated = client.patch(f"/podcasts/{episode['id']}", json={"title": "English", "author": "Author", "language": "ja"})
+    assert updated.json()["language"] == "ja"
+    segment = client.get(f"/podcasts/chunks/{segment['id']}").json()
+    assert segment["episode_language"] == "ja"
+    assert segment["transcript"]["text"] == "Hello"
+
+
+def test_podcast_default_and_invalid_language(client):
+    payload = {"audio_location": "audio", "title": "Episode", "author": "Author", "chunk_interval": 60,
+               "podcast_details": {"provider": "youtube", "id": "video"}}
+    assert client.post("/podcasts", json={**payload, "language": "fr"}).status_code == 422
+    assert client.post("/podcasts", json=payload).json()["language"] == "ja"

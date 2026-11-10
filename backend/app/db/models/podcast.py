@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import CheckConstraint, ForeignKey, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -8,7 +8,10 @@ from app.db.models import user as _user  # noqa: F401
 
 class PodcastEpisode(Base):
     __tablename__ = "podcasts"
-    __table_args__ = (UniqueConstraint("user_id", "audio_location", name="uq_podcasts_user_audio"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "audio_location", name="uq_podcasts_user_audio"),
+        CheckConstraint("language IN ('ja', 'en')", name="valid_podcast_language"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id : Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
@@ -16,6 +19,7 @@ class PodcastEpisode(Base):
     title: Mapped[str]
     author: Mapped[str]
     duration: Mapped[float]
+    language: Mapped[str] = mapped_column(String(2), nullable=False, default="ja", server_default=text("'ja'"))
 
 class PodcastChunk(Base):
     __tablename__ = "podcast_chunk"
@@ -35,6 +39,10 @@ class PodcastChunk(Base):
     @property
     def episode_author(self) -> str:
         return self.episode.author
+
+    @property
+    def episode_language(self) -> str:
+        return self.episode.language
 
     transcript: Mapped["PodcastTranscript | None"] = relationship(
         back_populates="podcast_chunk", cascade="all, delete-orphan", uselist=False

@@ -5,13 +5,14 @@ import "./Panel.css";
 
 type Props = {
   word: TokenGroup;
+  language?: "ja" | "en";
   anchor: HTMLElement;
   onClose: () => void;
   onChange: (score: number) => void;
   saving: boolean;
 };
 
-export default function WordPanel({ word, anchor, onClose, onChange, saving }: Props) {
+export default function WordPanel({ word, language = "ja", anchor, onClose, onChange, saving }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ top: 0, left: 0, ready: false });
 
@@ -59,7 +60,7 @@ export default function WordPanel({ word, anchor, onClose, onChange, saving }: P
     <div ref={panelRef} className="panel" role="region" aria-label="Word details"
       style={{ top: position.top, left: position.left, visibility: position.ready ? "visible" : "hidden" }}>
       <header className="panel-header">
-        <div className="panel-word"><h2 className="panel-reading" lang="ja">{word.lookup_form} / {reading || word.text}</h2></div>
+        <div className="panel-word"><h2 className="panel-reading" lang={language}>{word.lookup_form}{language === "ja" ? ` / ${reading || word.text}` : ""}</h2></div>
         <div className="panel-score" aria-live="polite">{rated ? `${score} / 5` : "Unseen"}</div>
         <button type="button" onClick={onClose} aria-label="Close word details">×</button>
       </header>
