@@ -64,6 +64,14 @@ sense disambiguation are not currently resolved. Reload an extension page to
 change the selected language. English scores are independent of Japanese
 scores and, like the existing feature, currently use the fixed development user.
 
+The backend's Vercel build runs `scripts/strip_debug_symbols.py` after installing
+dependencies. This removes debug symbols from the Linux NLP libraries while
+keeping both parser models and dictionaries intact, and updates the package
+metadata Vercel uses to calculate bundle size. The build image needs GNU
+`strip`; a custom Vercel build command must run this script after dependency
+installation. Development tools, including Alembic and pytest, are installed
+with the default `uv sync` but excluded from production dependencies.
+
 ## Logs
 
 Browser developer tools show API request status, duration, operation, and request ID,
