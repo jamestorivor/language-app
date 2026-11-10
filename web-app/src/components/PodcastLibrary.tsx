@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { deleteEpisode, getEpisodes } from "../api/podcast";
+import { getEpisodes } from "../api/podcast";
 import type { EpisodeResponse, PodcastLanguage } from "../contracts/podcast";
 import PodcastCard from "./PodcastCard";
 import { Link, useSearchParams } from "react-router";
@@ -34,8 +34,6 @@ import { Link, useSearchParams } from "react-router";
 export default function PodcastLibrary() {
   const [episodes, setEpisodes] = useState<EpisodeResponse[] | null>(null);
   const [error, setError] = useState(false);
-  const [deleteError, setDeleteError] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const language: PodcastLanguage = searchParams.get("language") === "en" ? "en" : "ja";
 
@@ -49,20 +47,6 @@ export default function PodcastLibrary() {
     }
     loadEpisodes();
   }, []);
-
-  async function handleDelete(episode: EpisodeResponse) {
-    if (!window.confirm(`Delete “${episode.title}” and its segments and transcripts? This cannot be undone.`)) return;
-    setDeleteError(false);
-    setDeletingId(episode.id);
-    try {
-      await deleteEpisode(episode.id);
-      setEpisodes((current) => current?.filter((item) => item.id !== episode.id) ?? null);
-    } catch {
-      setDeleteError(true);
-    } finally {
-      setDeletingId(null);
-    }
-  }
 
   if (error) return <p role="alert" className="mt-8 text-sm text-red-700">Could not load your podcasts. Please refresh and try again.</p>;
   if (episodes === null) return <p role="status" className="mt-8 text-sm text-stone-500">Loading your podcasts…</p>;
@@ -78,12 +62,10 @@ export default function PodcastLibrary() {
           </button>
         ))}
       </div>
-      {deleteError && <p role="alert" className="mt-4 text-sm text-red-700">Could not delete the podcast. Please try again.</p>}
       {filteredEpisodes.length > 0 ? (
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filteredEpisodes.map((episode) => (
-          <PodcastCard key={episode.id} episode={episode} onDelete={handleDelete}
-            deleting={deletingId === episode.id} deleteDisabled={deletingId !== null} />
+          <PodcastCard key={episode.id} episode={episode} />
         ))}
       </div>
       ) : (

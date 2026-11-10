@@ -1,11 +1,11 @@
-import { Link, useParams, useLocation } from "react-router";
+import { Link, useParams, useLocation, useNavigate } from "react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import type {
   EpisodeResponse,
   ListSegmentResponse,
   PodcastLanguage,
 } from "../contracts/podcast";
-import { getEpisodeById, getSegments, updateEpisode } from "../api/podcast";
+import { deleteEpisode, getEpisodeById, getSegments, updateEpisode } from "../api/podcast";
 import { formatTime } from "../utils/formatTime";
 
 // export const sampleApiSegments: ListSegmentResponse = [
@@ -45,12 +45,14 @@ export default function PodcastSegments() {
   const { podcastId } = useParams();
   const id = Number(podcastId);
   const location = useLocation();
+  const navigate = useNavigate();
   const [episode, setEpisode] = useState<EpisodeResponse | undefined>(
     (location.state as { episode?: EpisodeResponse } | null)?.episode,
   );
   const [segements, setSegements] = useState<ListSegmentResponse>([]);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [editError, setEditError] = useState("");
 
   async function saveDetails(event: FormEvent<HTMLFormElement>) {
@@ -72,6 +74,19 @@ export default function PodcastSegments() {
       setEditError("Could not save changes. Please try again.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!episode || !window.confirm(`Delete “${episode.title}” and its segments and transcripts? This cannot be undone.`)) return;
+    setEditError("");
+    setDeleting(true);
+    try {
+      await deleteEpisode(episode.id);
+      navigate(`/podcasts?language=${episode.language}`, { replace: true });
+    } catch {
+      setEditError("Could not delete the podcast. Please try again.");
+      setDeleting(false);
     }
   }
 
@@ -129,8 +144,14 @@ export default function PodcastSegments() {
               </div>
               {editError && <p role="alert" className="text-sm text-red-700">{editError}</p>}
               <div className="flex flex-wrap gap-3">
-                <button type="submit" disabled={saving} className="rounded-lg bg-emerald-900 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">{saving ? "Saving…" : "Save changes"}</button>
-                <button type="button" disabled={saving} onClick={() => setEditing(false)} className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50">Cancel</button>
+                <button type="submit" disabled={saving || deleting} className="rounded-lg bg-emerald-900 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">{saving ? "Saving…" : "Save changes"}</button>
+                <button type="button" disabled={saving || deleting} onClick={() => setEditing(false)} className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-50">Cancel</button>
+              </div>
+              <div className="border-t border-stone-200 pt-4">
+                <button type="button" disabled={saving || deleting} onClick={handleDelete}
+                  className="rounded text-sm font-semibold text-red-700 hover:text-red-900 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700">
+                  {deleting ? "Deleting…" : "Delete podcast"}
+                </button>
               </div>
             </form>
           )}
