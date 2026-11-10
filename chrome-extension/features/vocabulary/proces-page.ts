@@ -54,28 +54,28 @@ function injectWordStyles() {
   document.head.appendChild(style);
 }
 
-async function processPageText() {
+async function processPageText(language: "ja" | "en") {
   const textNodes: Text[] = findTextNodes();
   let tokenList: TokenGroup[] = [];
   for (const textNode of textNodes) {
     const nodeText = textNode.data;
     try {
-      const response = await requestJapaneseParsing(nodeText);
+      const response = await requestJapaneseParsing(nodeText, language);
       const tokens = response.response;
       tokenList.push(...tokens);
       applyClickableWordToNode(tokens, textNode);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(message);
+      throw new Error(`Could not parse this page: ${message}`);
     }
   }
   console.log(`complete tokenlist len: ${tokenList.length}`);
   return tokenList;
 }
 
-async function parsePageOnLoad() {
+async function parsePageOnLoad(language: "ja" | "en" = "ja") {
   injectWordStyles();
-  return await processPageText();
+  return await processPageText(language);
 }
 
 export { parsePageOnLoad };

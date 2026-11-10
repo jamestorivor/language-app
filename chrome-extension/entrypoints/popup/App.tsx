@@ -9,6 +9,7 @@ async function getCurrentTab() {
 
 function App() {
   const [status, setStatus] = useState<string>("");
+  const [language, setLanguage] = useState<"ja" | "en">("ja");
 
   async function parseCurrentPage() {
     setStatus("Parsing page…");
@@ -17,10 +18,11 @@ function App() {
       const tabId = tab?.id;
 
       if (tabId != null) {
-        await browser.tabs.sendMessage(tabId, {
+        const response = await browser.tabs.sendMessage(tabId, {
           type: PARSE_CURRENT_PAGE_MESSAGE_TYPE,
+          language,
         });
-        setStatus("Page parsed");
+        setStatus(response?.ok ? "Page parsed" : response?.error ?? "Could not parse this page");
       } else {
         setStatus("No active page found");
       }
@@ -31,6 +33,10 @@ function App() {
 
   return (
     <main>
+      <label>Language <select value={language} onChange={(event) => setLanguage(event.target.value as "ja" | "en")}>
+        <option value="ja">Japanese</option>
+        <option value="en">English</option>
+      </select></label>
       <button
         type="button"
         onClick={parseCurrentPage}

@@ -1,6 +1,7 @@
 type ParseJapaneseMessage = {
   type: "PARSE_JAPANESE";
   text: string;
+  language?: "ja" | "en";
 };
 
 type JapaneseToken = {

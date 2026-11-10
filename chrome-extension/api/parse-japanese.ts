@@ -3,8 +3,9 @@ import type { ParseJapaneseResponse } from "@/contracts/parse-japanese";
 
 async function fetchJapaneseTokenGroups(
   text: string,
+  language: "ja" | "en" = "ja",
 ): Promise<ParseJapaneseResponse> {
-  const url = new URL("jap/parse", API_BASE_URL);
+  const url = new URL(`${language === "en" ? "eng" : "jap"}/parse`, API_BASE_URL);
   return await fetch(url, {
     method: "POST",
     headers: {

@@ -10,6 +10,7 @@ type LocalJapStorage = {
 type UpdateFamiliarityScoreData = {
   word_id: number;
   new_score: number;
+  language?: "ja" | "en";
 };
 
 // --------------

@@ -15,12 +15,13 @@ import { updateWordFamiliarity } from "@/api/jap-vocab";
 
 async function handleJapaneseParseRequest(
   text: string,
+  language: "ja" | "en" = "ja",
 ): Promise<ParseJapaneseResponse> {
   if (typeof text !== "string") {
     throw new Error("Text must be string");
   }
 
-  return await fetchJapaneseTokenGroups(text);
+  return await fetchJapaneseTokenGroups(text, language);
 }
 
 async function handleFamiliarityScoreUpdateRequest(
@@ -34,7 +35,7 @@ async function handleFamiliarityScoreUpdateRequest(
     throw new Error("Invalid familiarity update data");
   }
 
-  return await updateWordFamiliarity(data.word_id, data.new_score);
+  return await updateWordFamiliarity(data.word_id, data.new_score, data.language);
 }
 
 async function callApi<T>(
@@ -57,7 +58,7 @@ function messageListener(
 ) {
   switch (message.type) {
     case PARSE_JAPANESE_MESSAGE_TYPE:
-      return callApi(() => handleJapaneseParseRequest(message.text));
+      return callApi(() => handleJapaneseParseRequest(message.text, message.language));
     case UPDATE_FAMILIARITY_SCORE_MESSAGE_TYPE:
       return callApi(() => handleFamiliarityScoreUpdateRequest(message.data));
 

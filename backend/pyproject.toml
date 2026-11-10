@@ -15,6 +15,9 @@ dependencies = [
     "sudachidict-core>=20261015",
     "sudachipy>=0.7.0",
     "youtube-transcript-api>=1.2.4",
+    "alembic>=1.20.1",
+    "spacy>=3.8.7,<4",
+    "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
 ]
 
 [tool.pytest.ini_options]

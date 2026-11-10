@@ -4,8 +4,9 @@ import type { UpdateFamiliarityScoreResponse } from "@/contracts/jap-vocab";
 async function updateWordFamiliarity(
   word_id: number,
   new_score: number,
+  language: "ja" | "en" = "ja",
 ): Promise<UpdateFamiliarityScoreResponse> {
-  const url = new URL("jap/update_familiarity_score", API_BASE_URL);
+  const url = new URL(`${language === "en" ? "eng" : "jap"}/update_familiarity_score`, API_BASE_URL);
   return await fetch(url, {
     method: "PATCH",
     headers: {

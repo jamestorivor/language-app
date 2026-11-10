@@ -12,6 +12,7 @@ export interface selectionData {
 
 type PanelProps = {
   localJapDb: LocalJapStorage;
+  language: "ja" | "en";
   onFamiliarityChange: (wordId: number, newScore: number) => Promise<void>;
 };
 
@@ -30,6 +31,7 @@ function panelContent(
   windowData: { height: number; width: number },
   panelRef: React.RefObject<HTMLDivElement | null>,
   onChange: (score: number) => void,
+  language: "ja" | "en",
 ) {
   if (!wordToken || !wordRect || !panelData || !windowData) return;
   else {
@@ -59,8 +61,8 @@ function panelContent(
       >
         <header className="panel-header">
           <div className="panel-word">
-            <h2 className="panel-reading" lang="ja">
-              {wordToken.lookup_form} / {reading || wordToken.text}
+            <h2 className="panel-reading" lang={language}>
+              {wordToken.lookup_form}{language === "ja" ? ` / ${reading || wordToken.text}` : ""}
             </h2>
           </div>
           <div className="panel-score" aria-live="polite">
@@ -113,7 +115,7 @@ function panelContent(
   }
 }
 
-function Panel({ localJapDb, onFamiliarityChange }: PanelProps) {
+function Panel({ localJapDb, language, onFamiliarityChange }: PanelProps) {
   const [currWordId, setCurrWordId] = useState<number | null>();
   const [selectedToken, setSelectedToken] = useState<TokenGroup | null>(null);
   const [currWordPosition, setCurrWordPosition] = useState<DOMRect | null>(
@@ -208,6 +210,7 @@ function Panel({ localJapDb, onFamiliarityChange }: PanelProps) {
         windowData,
         panelRef,
         (score) => onFamiliarityChange(currWordId, score),
+        language,
       );
   }
 }
