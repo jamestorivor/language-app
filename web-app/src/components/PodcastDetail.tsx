@@ -42,7 +42,7 @@ function SegmentDetail({ segmentId }: { segmentId: string | undefined }) {
   if (!segment) return <>Loading...</>;
   else
     return (
-      <div>
+      <div className="pb-36 sm:pb-0">
         <Link
           to={`/podcasts/${segment.podcast_id}`}
           className="text-sm font-semibold text-emerald-800 hover:text-emerald-950 hover:underline"
