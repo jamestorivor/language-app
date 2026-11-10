@@ -33,6 +33,11 @@ __pycache__/
 /backend/build/
 /backend/dist/
 
+# Local database files and migration backups
+/backend/*.dump
+/backend/pg_hba.conf
+/backend/alembic/versions/*.bak
+
 # Local environment files; keep the example configuration
 .env*
 !.env.example
