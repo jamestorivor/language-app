@@ -11,6 +11,7 @@ class EnglishDictionary(Base):
     headword: Mapped[str] = mapped_column(Text, unique=True)
     lookup_key: Mapped[str] = mapped_column(Text, index=True)
     meaning: Mapped[str] = mapped_column(Text)
+    cefr_level: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class EnglishWordFamiliarity(Base):

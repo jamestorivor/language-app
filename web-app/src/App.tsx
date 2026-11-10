@@ -4,6 +4,7 @@ import AddPodcastCard from "./components/AddPodcast";
 import PodcastLibrary from "./components/PodcastLibrary";
 import PodcastDetail from "./components/PodcastDetail";
 import PodcastSegments from "./components/PodcastSegments";
+import MarkKnown from "./components/MarkKnown";
 
 const links = [
   { to: "/", label: "Home" },
@@ -50,6 +51,7 @@ function App() {
           <Route
             path="/"
             element={
+              <>
               <section className="max-w-3xl rounded-3xl border border-stone-200 bg-white px-6 py-10 shadow-sm sm:px-12 sm:py-14">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-800">
                   Your listening practice
@@ -67,6 +69,8 @@ function App() {
                   View my podcasts
                 </Link>
               </section>
+              <MarkKnown />
+              </>
             }
           />
           <Route

@@ -11,6 +11,7 @@ class JapaneseDictionary(Base):
     word_id : Mapped[int] = mapped_column(primary_key=True)
     # JMdict's ent_seq.
     source_entry_id: Mapped[int] = mapped_column(unique=True)
+    jlpt_level: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Meanings, glosses, parts of speech, notes, and sense restrictions.
     senses: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)

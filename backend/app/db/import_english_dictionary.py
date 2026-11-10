@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 from app.db.models.english_vocab import EnglishDictionary
 from app.db.session import SessionLocal
+from app.db.vocabulary_levels import english_levels
 
 DEFAULT_SOURCE = Path(__file__).resolve().parents[3] / "data" / "EJDict.zip"
 BATCH_SIZE = 500
@@ -66,7 +67,8 @@ def import_entries(session, entries: dict[str, str]) -> tuple[int, int]:
             key = lookup_key(word)
             entry = existing.get(word)
             if entry is None:
-                session.add(EnglishDictionary(headword=word, lookup_key=key, meaning=meaning))
+                session.add(EnglishDictionary(headword=word, lookup_key=key, meaning=meaning,
+                                              cefr_level=english_levels().get(key)))
                 added += 1
             elif entry.meaning != meaning or entry.lookup_key != key:
                 entry.meaning = meaning

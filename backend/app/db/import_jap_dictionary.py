@@ -6,6 +6,7 @@ from app.db.session import SessionLocal
 from typing import TypedDict
 from sqlalchemy import select
 from logging import Logger
+from app.db.vocabulary_levels import japanese_levels
 
 logger = Logger(name="idk")
 
@@ -89,6 +90,7 @@ def parse_entry(entry : ET.Element) -> JMDictRecord:
 def construct_db_objects(record : JMDictRecord) -> JapaneseDictionary:
     return JapaneseDictionary(
             source_entry_id = record["source_entry_id"],
+            jlpt_level = japanese_levels().get(record["source_entry_id"]),
             spellings = [JapaneseSpelling(
                 position = spelling["position"],
                 spelling = spelling["spelling"],

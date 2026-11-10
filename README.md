@@ -85,6 +85,37 @@ This leaves enough temporary disk space to install Sudachi's core dictionary.
 When upgrading spaCy, update its version and Linux wheel URLs together, then
 regenerate `backend/uv.lock`.
 
+## Marking vocabulary as known by level
+
+On the home page, select Japanese (JLPT) or English (CEFR) and a level to set
+matching dictionary entries at that level and easier levels to familiarity 5.
+This replaces any existing ratings for those entries; words without a matching
+level are left alone. The levels are approximate, and word-level ratings do not
+distinguish individual meanings. JLPT lists are unofficial.
+
+For an existing installation, run `uv run alembic upgrade head` from `backend`
+after updating the application. The migration adds and populates levels for
+existing dictionaries; later dictionary imports assign levels to new entries.
+Import the English dictionary as described above and, from `backend`, run
+`uv run python -m app.db.import_jap_dictionary` to import the included JMdict
+data. Importing is necessary before the feature can mark words. As with other
+familiarity updates, the current application uses the fixed development user.
+
+The bundled Japanese level mapping is derived from [OpenJLPT](https://github.com/evanclan/OpenJLPT),
+which uses JMdict and KANJIDIC2 (EDRDG), Jonathan Waller's JLPT lists, and
+Tatoeba; it is distributed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+See `backend/app/data/openjlpt-NOTICE.md` and `openjlpt-LICENSE` for attribution
+and license details. The mapping retains JMdict IDs and the easiest listed level.
+
+The English mapping is derived from [Open Language Profiles](https://github.com/vitwits/english-wordlist-cefr-a1-c2):
+The CEFR-J Wordlist Version 1.5, compiled by Yukio Tono, Tokyo University of
+Foreign Studies (retrieved from http://www.cefr-j.org/download.html on January
+20, 2020), and the Octanove Vocabulary Profile C1/C2 version 1.0 by Octanove
+Labs, licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+The mapping keeps headwords and the easiest level across parts of speech; exact
+normalized headwords are matched to EJDict. Both mappings omit entries that do
+not match the installed dictionaries.
+
 ## Logs
 
 Browser developer tools show API request status, duration, operation, and request ID,
