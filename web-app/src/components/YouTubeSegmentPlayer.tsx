@@ -4,7 +4,11 @@ import { formatTime } from "../utils/formatTime";
 const SKIP_SECONDS = 10;
 
 type Player = {
-  cueVideoById: (options: { videoId: string; startSeconds: number; endSeconds: number }) => void;
+  cueVideoById: (options: {
+    videoId: string;
+    startSeconds: number;
+    endSeconds: number;
+  }) => void;
   destroy: () => void;
   getCurrentTime: () => number;
   getPlayerState: () => number;
@@ -14,15 +18,18 @@ type Player = {
 };
 
 type YouTubeApi = {
-  Player: new (element: HTMLElement, options: {
-    videoId: string;
-    playerVars: { origin: string; playsinline: number };
-    events: {
-      onReady: (event: { target: Player }) => void;
-      onStateChange: (event: { data: number; target: Player }) => void;
-      onError: () => void;
-    };
-  }) => Player;
+  Player: new (
+    element: HTMLElement,
+    options: {
+      videoId: string;
+      playerVars: { origin: string; playsinline: number };
+      events: {
+        onReady: (event: { target: Player }) => void;
+        onStateChange: (event: { data: number; target: Player }) => void;
+        onError: () => void;
+      };
+    },
+  ) => Player;
 };
 
 declare global {
@@ -59,7 +66,12 @@ function loadYouTubeApi(): Promise<YouTubeApi> {
   return apiPromise;
 }
 
-export default function YouTubeSegmentPlayer({ videoId, startTime, endTime, title }: {
+export default function YouTubeSegmentPlayer({
+  videoId,
+  startTime,
+  endTime,
+  title,
+}: {
   videoId: string;
   startTime: number;
   endTime: number;
@@ -81,61 +93,73 @@ export default function YouTubeSegmentPlayer({ videoId, startTime, endTime, titl
     if (!container) return;
 
     const cueSegment = (target: Player) => {
-      target.cueVideoById({ videoId, startSeconds: startTime, endSeconds: endTime });
+      target.cueVideoById({
+        videoId,
+        startSeconds: startTime,
+        endSeconds: endTime,
+      });
     };
 
-    void loadYouTubeApi().then((api) => {
-      if (lifecycle.signal.aborted) return;
-      const mount = document.createElement("div");
-      container.appendChild(mount);
-      player = new api.Player(mount, {
-        videoId,
-        playerVars: { origin: window.location.origin, playsinline: 1 },
-        events: {
-          onReady: ({ target }) => {
-            if (lifecycle.signal.aborted) return;
-            playerRef.current = target;
-            cueSegment(target);
-            setReady(true);
-            timer = window.setInterval(() => {
-              const state = target.getPlayerState();
-              if (state !== 1 && state !== 2) return;
-              const time = target.getCurrentTime();
-              const now = Date.now();
-              if (!Number.isFinite(time)) return;
-              setCurrentTime(Math.min(endTime, Math.max(startTime, time)));
-              if (time >= endTime) {
-                lastCorrection = now;
-                target.pauseVideo();
+    void loadYouTubeApi()
+      .then((api) => {
+        if (lifecycle.signal.aborted) return;
+        const mount = document.createElement("div");
+        container.appendChild(mount);
+        player = new api.Player(mount, {
+          videoId,
+          playerVars: { origin: window.location.origin, playsinline: 1 },
+          events: {
+            onReady: ({ target }) => {
+              if (lifecycle.signal.aborted) return;
+              playerRef.current = target;
+              cueSegment(target);
+              setReady(true);
+              timer = window.setInterval(() => {
+                const state = target.getPlayerState();
+                if (state !== 1 && state !== 2) return;
+                const time = target.getCurrentTime();
+                const now = Date.now();
+                if (!Number.isFinite(time)) return;
+                setCurrentTime(Math.min(endTime, Math.max(startTime, time)));
+                if (time >= endTime) {
+                  lastCorrection = now;
+                  target.pauseVideo();
+                  cueSegment(target);
+                  setCurrentTime(startTime);
+                } else if (
+                  time < startTime - 2 &&
+                  now - lastCorrection >= 1500
+                ) {
+                  // YouTube can seek to a keyframe about two seconds early.
+                  lastCorrection = now;
+                  target.seekTo(startTime, true);
+                }
+              }, 200);
+            },
+            onStateChange: ({ data, target }) => {
+              if (lifecycle.signal.aborted) return;
+              setPlaying(data === 1 || data === 3);
+              if (data === 0) {
                 cueSegment(target);
                 setCurrentTime(startTime);
-              } else if (time < startTime - 2 && now - lastCorrection >= 1500) {
-                // YouTube can seek to a keyframe about two seconds early.
-                lastCorrection = now;
-                target.seekTo(startTime, true);
               }
-            }, 200);
+            },
+            onError: () => {
+              if (!lifecycle.signal.aborted) {
+                setReady(false);
+                setPlaying(false);
+                setError("This YouTube video cannot be played here.");
+              }
+            },
           },
-          onStateChange: ({ data, target }) => {
-            if (lifecycle.signal.aborted) return;
-            setPlaying(data === 1 || data === 3);
-            if (data === 0) {
-              cueSegment(target);
-              setCurrentTime(startTime);
-            }
-          },
-          onError: () => {
-            if (!lifecycle.signal.aborted) {
-              setReady(false);
-              setPlaying(false);
-              setError("This YouTube video cannot be played here.");
-            }
-          },
-        },
+        });
+      })
+      .catch(() => {
+        if (!lifecycle.signal.aborted)
+          setError(
+            "Could not load the YouTube player. Please try again later.",
+          );
       });
-    }).catch(() => {
-      if (!lifecycle.signal.aborted) setError("Could not load the YouTube player. Please try again later.");
-    });
 
     return () => {
       lifecycle.abort();
@@ -169,10 +193,14 @@ export default function YouTubeSegmentPlayer({ videoId, startTime, endTime, titl
     <>
       <div
         ref={containerRef}
-        className="mt-4 aspect-video w-full min-h-[200px] min-w-[200px] [&_iframe]:h-full [&_iframe]:w-full"
+        className="mt-4 aspect-video w-full min-h-50 min-w-50 [&_iframe]:h-full [&_iframe]:w-full"
         aria-label={title}
       />
-      {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-3 text-sm text-red-700">
+          {error}
+        </p>
+      )}
       <div
         role="region"
         aria-label="Playback controls"
