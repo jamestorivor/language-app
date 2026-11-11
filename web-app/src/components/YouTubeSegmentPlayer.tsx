@@ -71,11 +71,13 @@ export default function YouTubeSegmentPlayer({
   startTime,
   endTime,
   title,
+  isPinned,
 }: {
   videoId: string;
   startTime: number;
   endTime: number;
   title: string;
+  isPinned: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<Player | null>(null);
@@ -193,7 +195,7 @@ export default function YouTubeSegmentPlayer({
     <>
       <div
         ref={containerRef}
-        className="mt-4 aspect-video w-full min-h-50 min-w-50 [&_iframe]:h-full [&_iframe]:w-full"
+        className={`${isPinned ? "mt-3" : "mt-4"} aspect-video w-full overflow-hidden rounded-lg bg-stone-950 [&_iframe]:h-full [&_iframe]:w-full`}
         aria-label={title}
       />
       {error && (
@@ -201,7 +203,7 @@ export default function YouTubeSegmentPlayer({
           {error}
         </p>
       )}
-      <div
+      {!isPinned && <div
         role="region"
         aria-label="Playback controls"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white/95 px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(28,25,23,0.08)] backdrop-blur sm:hidden"
@@ -227,7 +229,7 @@ export default function YouTubeSegmentPlayer({
             </button>
           </div>
         </div>
-      </div>
+      </div>}
     </>
   );
 }

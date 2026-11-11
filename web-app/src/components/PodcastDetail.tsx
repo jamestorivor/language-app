@@ -21,6 +21,7 @@ function SegmentDetail({ segmentId }: { segmentId: string | undefined }) {
       : undefined,
   );
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isPinned, setIsPinned] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,7 +43,7 @@ function SegmentDetail({ segmentId }: { segmentId: string | undefined }) {
   if (!segment) return <>Loading...</>;
   else
     return (
-      <div className="pb-36 sm:pb-0">
+      <div className={isPinned ? "pb-0" : "pb-36 sm:pb-0"}>
         <Link
           to={`/podcasts/${segment.podcast_id}`}
           className="text-sm font-semibold text-emerald-800 hover:text-emerald-950 hover:underline"
@@ -55,10 +56,15 @@ function SegmentDetail({ segmentId }: { segmentId: string | undefined }) {
         <p className="mt-4 inline-block rounded-full bg-stone-200/70 px-3 py-1 text-sm font-medium tabular-nums text-stone-700">
           {formatTime(segment.start_time)} – {formatTime(segment.end_time)}
         </p>
-        <div className="mt-8 grid gap-6">
-          <section className="mx-auto w-full max-w-xl rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
-            <h2 className="text-lg font-semibold tracking-tight">Player</h2>
-            <SegmentPlayer segment={segment} />
+        <div className="mt-8 flex flex-col gap-6">
+          <section
+            className={`mx-auto w-full rounded-2xl border border-stone-200 bg-white shadow-sm ${
+              isPinned
+                ? "sticky top-[env(safe-area-inset-top)] z-30 max-w-[min(36rem,calc(70dvh+1.5rem))] p-3 shadow-lg sm:p-4"
+                : "max-w-xl p-4 sm:p-6"
+            }`}
+          >
+            <SegmentPlayer segment={segment} isPinned={isPinned} onTogglePin={() => setIsPinned((pinned) => !pinned)} />
           </section>
           <InteractiveTranscript key={`${segment.id}-${segment.episode_language}`} text={segment.transcript?.text ?? ""} language={segment.episode_language} />
         </div>
@@ -66,7 +72,7 @@ function SegmentDetail({ segmentId }: { segmentId: string | undefined }) {
     );
 }
 
-function SegmentPlayer({ segment }: { segment: SegmentResponse }) {
+function SegmentPlayer({ segment, isPinned, onTogglePin }: { segment: SegmentResponse; isPinned: boolean; onTogglePin: () => void }) {
   const [episode, setEpisode] = useState<EpisodeResponse>();
   const [error, setError] = useState(false);
 
@@ -80,20 +86,29 @@ function SegmentPlayer({ segment }: { segment: SegmentResponse }) {
     return () => { cancelled = true; };
   }, [segment.podcast_id]);
 
-  if (error) return <p role="alert" className="mt-3 text-sm text-red-700">Could not load the episode player.</p>;
-  if (!episode) return <p className="mt-3 text-sm text-stone-500">Loading player...</p>;
+  if (error) return <><h2 className="text-lg font-semibold tracking-tight">Player</h2><p role="alert" className="mt-3 text-sm text-red-700">Could not load the episode player.</p></>;
+  if (!episode) return <><h2 className="text-lg font-semibold tracking-tight">Player</h2><p className="mt-3 text-sm text-stone-500">Loading player...</p></>;
 
   const link = parsePodcastLink(episode.audio_location);
   if (link?.provider !== "youtube") {
-    return <p className="mt-3 text-sm text-stone-500">Playback is currently available for YouTube episodes only.</p>;
+    return <><h2 className="text-lg font-semibold tracking-tight">Player</h2><p className="mt-3 text-sm text-stone-500">Playback is currently available for YouTube episodes only.</p></>;
   }
 
   return (
-    <YouTubeSegmentPlayer
-      videoId={link.id}
-      startTime={segment.start_time}
-      endTime={segment.end_time}
-      title={`${segment.episode_title} segment`}
-    />
+    <>
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold tracking-tight">Player</h2>
+        <button type="button" aria-pressed={isPinned} onClick={onTogglePin} className="shrink-0 rounded-lg border border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">
+          {isPinned ? "Unpin video" : "Pin to top"}
+        </button>
+      </div>
+      <YouTubeSegmentPlayer
+        videoId={link.id}
+        startTime={segment.start_time}
+        endTime={segment.end_time}
+        title={`${segment.episode_title} segment`}
+        isPinned={isPinned}
+      />
+    </>
   );
 }
