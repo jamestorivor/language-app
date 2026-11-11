@@ -18,7 +18,7 @@ function parsePodcastLink(input: string): PodcastLink | null {
     return match ? { provider: "spotify", id: match[1] } : null;
   }
 
-  if (url.hostname === "www.youtube.com" || url.hostname === "youtube.com") {
+  if (["www.youtube.com", "youtube.com", "m.youtube.com"].includes(url.hostname)) {
     const id = url.pathname === "/watch" ? url.searchParams.get("v") : null;
     return id && /^[a-zA-Z0-9_-]{11}$/.test(id)
       ? { provider: "youtube", id }

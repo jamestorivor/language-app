@@ -1,4 +1,4 @@
-import { useState, type SubmitEvent } from "react";
+import { useRef, useState, type SubmitEvent } from "react";
 import type { CreateEpisodeRequest, PodcastLanguage } from "../contracts/podcast";
 import { createEpisode } from "../api/podcast";
 import { useNavigate, useSearchParams } from "react-router";
@@ -8,9 +8,12 @@ function AddPodcastCard() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [errorMessage, setErrorMessage] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const isAddingRef = useRef(false);
 
   async function handleAddButtonClick(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isAddingRef.current) return;
     setErrorMessage("");
     const form = new FormData(event.currentTarget);
 
@@ -37,6 +40,8 @@ function AddPodcastCard() {
       language: form.get("language") === "en" ? "en" : "ja",
     };
 
+    isAddingRef.current = true;
+    setIsAdding(true);
     try {
       const episode = await createEpisode(episodeRequest);
       const episodeId = episode.id;
@@ -46,6 +51,9 @@ function AddPodcastCard() {
       setErrorMessage(
         error instanceof Error ? error.message : "Something went wrong",
       );
+    } finally {
+      isAddingRef.current = false;
+      setIsAdding(false);
     }
   }
 
@@ -166,9 +174,13 @@ function AddPodcastCard() {
           <div>
             <button
               type="submit"
-              className="cursor-pointer rounded-xl bg-emerald-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
+              disabled={isAdding}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Add podcast
+              {isAdding && (
+                <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white motion-reduce:animate-none" />
+              )}
+              <span role="status">{isAdding ? "Adding podcast…" : "Add podcast"}</span>
             </button>
           </div>
         </form>
