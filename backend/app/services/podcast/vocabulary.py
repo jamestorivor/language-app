@@ -46,13 +46,15 @@ def analyze_chunk(session: Session, chunk, language: str, cached):
     if not text.strip():
         return {}, 0
     # Bump the version if token matching or counting rules change.
-    fingerprint = sha256(("v1\0" + language + "\0" + text).encode()).hexdigest()
+    fingerprint = sha256(("v2\0" + language + "\0" + text).encode()).hexdigest()
     if cached and cached.fingerprint == fingerprint:
         return cached.counts, cached.unmatched
     groups = parse_groups(session, text, chunk.user_id, language)
-    counts = Counter(str(group.word_id) for group in groups if group.word_id is not None and group.display)
-    # Count unmatched lexical groups, excluding whitespace and punctuation.
-    unmatched = sum(1 for group in groups if group.word_id is None and any(c.isalnum() for c in group.text))
+    # Include matched lexical groups even when they are hidden in the transcript
+    # UI (for example, Japanese particles). Expressions remain single groups.
+    lexical = [group for group in groups if any(c.isalnum() for c in group.text)]
+    counts = Counter(str(group.word_id) for group in lexical if group.word_id is not None)
+    unmatched = sum(1 for group in lexical if group.word_id is None)
     if cached is None:
         cached = PodcastVocabularyAnalysis(chunk_id=chunk.id, fingerprint=fingerprint, counts=dict(counts), unmatched=unmatched)
         session.add(cached)
@@ -63,18 +65,31 @@ def analyze_chunk(session: Session, chunk, language: str, cached):
 
 def estimate(counts: dict[str, int], scores: dict[str, int], unmatched: int):
     total = sum(counts.values())
-    if not total:
+    coverage_total = total + unmatched
+    if not coverage_total:
         return None
     rated = sum(n for word, n in counts.items() if scores.get(word, 0) in WEIGHTS)
     points = sum(n * WEIGHTS.get(scores.get(word, 0), 0) for word, n in counts.items())
-    lower = 100 * points / total
+    # Retain the legacy weighted familiarity values for existing clients. With
+    # no matched groups they have no rated evidence, so use the full range.
+    lower = 100 * points / total if total else 0
+    upper = lower + 100 * (total - rated) / total if total else 100
+    # Ratings 3–5 imply use of the word, while 0–2 and unmatched groups do
+    # not establish whether its meaning is known. These are assumption-based
+    # bounds, not a statistical confidence interval or listening score.
+    known = sum(n for word, n in counts.items() if scores.get(word, 0) in (3, 4, 5))
     return {
-        "familiarity_low": round(lower, 1), "familiarity_high": round(lower + 100 * (total - rated) / total, 1),
-        "difficulty_low": round(100 - (lower + 100 * (total - rated) / total), 1),
+        # Round the lower bound down so rounding cannot exclude the raw value.
+        "coverage_low": (1000 * known // coverage_total) / 10, "coverage_high": 100.0,
+        "known_occurrences": known, "uncertain_occurrences": coverage_total - known,
+        "coverage_occurrences": coverage_total,
+        "uncertain_rated_unique": sum(1 for word in counts if scores.get(word, 0) in (1, 2)),
+        "familiarity_low": round(lower, 1), "familiarity_high": round(upper, 1),
+        "difficulty_low": round(100 - upper, 1),
         "difficulty_high": round(100 - lower, 1),
-        "rated_percent": round(100 * rated / total, 1), "matched_occurrences": total,
+        "rated_percent": round(100 * rated / total, 1) if total else 0, "matched_occurrences": total,
         "unmatched_groups": unmatched,
-        "dictionary_match_percent": round(100 * total / (total + unmatched), 1),
+        "dictionary_match_percent": round(100 * total / coverage_total, 1),
         "unrated_unique": sum(1 for word in counts if not scores.get(word, 0)),
         "low_rated_unique": sum(1 for word in counts if scores.get(word, 0) in (1, 2)),
     }

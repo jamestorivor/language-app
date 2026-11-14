@@ -55,6 +55,23 @@
   outline-offset: 2px;
 }
 
+.rating-scale-help {
+  margin-top: 7px;
+  max-height: 110px;
+  overflow-y: auto;
+  color: #666;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.rating-scale-help summary {
+  cursor: pointer;
+}
+
+.panel .rating-scale-help p {
+  margin: 6px 0 0;
+}
+
 @media (pointer: coarse) {
   .rating-scale-button {
     min-height: 44px;

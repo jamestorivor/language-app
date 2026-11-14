@@ -53,6 +53,12 @@ export type SegmentResponse = CreateSegmentRequest & {
 export type ListSegmentResponse = SegmentResponse[];
 
 export type VocabularyEstimate = {
+  coverage_low: number;
+  coverage_high: number;
+  coverage_occurrences: number;
+  known_occurrences: number;
+  uncertain_occurrences: number;
+  uncertain_rated_unique: number;
   familiarity_low: number;
   familiarity_high: number;
   difficulty_low: number;

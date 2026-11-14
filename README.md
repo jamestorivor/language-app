@@ -79,6 +79,22 @@ upload a timestamped UTF-8 `.txt` transcript (one timestamped line per entry),
 or select current YouTube captions for a YouTube episode. Existing segment
 transcript text does not retain the timestamps needed to redistribute it.
 
+### Podcast vocabulary coverage
+
+The vocabulary estimate counts repeated occurrences of lexical groups in the
+available transcript. Ratings 3–5 count as provisionally known; ratings 0–2
+and unmatched groups are uncertain. The lower bound is the share provisionally
+known, and the upper bound assumes every uncertain group is known. These are
+assumption-based bounds, not a confidence interval or a listening-comprehension
+score. Since no rating explicitly means that a word is unknown, the upper bound
+is currently 100%. Expressions and conjugated forms can count as one group;
+Japanese and English tokenization differs, so the estimate is not directly
+comparable to published all-word coverage thresholds or between languages.
+Matched groups hidden in the transcript, including Japanese particles, are
+included in the estimate. The baseline uses the same calculation with ratings
+captured when the transcript was added or replaced; for older episodes, the
+baseline is captured on first analysis.
+
 The backend's Vercel build runs `scripts/strip_debug_symbols.py` after installing
 dependencies. This removes debug symbols from the Linux NLP libraries while
 keeping both parser models and dictionaries intact, and updates the package

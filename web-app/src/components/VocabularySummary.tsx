@@ -1,9 +1,9 @@
 import type { VocabularyComparison, VocabularyEstimate } from "../contracts/podcast";
 
-// Round the endpoints outward so the displayed range still includes the estimate.
 function formatRange(low: number, high: number) {
-  if (low === high) return String(Math.round(low));
-  return `${Math.floor(low)}–${Math.ceil(high)}`;
+  const format = (value: number) => Number(value.toFixed(1)).toString();
+  if (low === high) return format(low);
+  return `${format(low)}–${format(high)}`;
 }
 
 function formatDate(value: string | null | undefined) {
@@ -12,9 +12,9 @@ function formatDate(value: string | null | undefined) {
   return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString(undefined, { dateStyle: "medium" });
 }
 
-function FamiliarityRing({ estimate, compact = false }: { estimate: VocabularyEstimate; compact?: boolean }) {
-  const low = Math.max(0, Math.min(100, estimate.familiarity_low));
-  const high = Math.max(low, Math.min(100, estimate.familiarity_high));
+function CoverageRing({ estimate, compact = false }: { estimate: VocabularyEstimate; compact?: boolean }) {
+  const low = Math.max(0, Math.min(100, estimate.coverage_low));
+  const high = Math.max(low, Math.min(100, estimate.coverage_high));
   return (
     <span className={`relative inline-flex shrink-0 items-center justify-center ${compact ? "h-5 w-5" : "h-32 w-32 sm:h-36 sm:w-36"}`}>
       <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" aria-hidden="true">
@@ -24,7 +24,7 @@ function FamiliarityRing({ estimate, compact = false }: { estimate: VocabularyEs
       </svg>
       {!compact && <span className="absolute max-w-[70%] text-center">
         <span className="block text-lg font-bold tracking-tight tabular-nums text-stone-900 sm:text-xl">{formatRange(low, high)}</span>
-        <span className="mt-0.5 block text-xs text-stone-500">out of 100</span>
+        <span className="mt-0.5 block text-xs text-stone-500">% of groups</span>
       </span>}
     </span>
   );
@@ -46,8 +46,8 @@ export default function VocabularySummary({ comparison, baselineAt, addedAt, com
   if (compact) {
     if (!current) return null;
     return <span className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg bg-stone-100/80 px-2 py-1 text-xs text-stone-600">
-      <FamiliarityRing estimate={current} compact />
-      <span>Vocabulary <strong className="font-semibold tabular-nums text-stone-800">{formatRange(current.familiarity_low, current.familiarity_high)}</strong><span className="text-stone-500"> / 100</span></span>
+      <CoverageRing estimate={current} compact />
+      <span>Vocabulary coverage <strong className="font-semibold tabular-nums text-stone-800">{formatRange(current.coverage_low, current.coverage_high)}%</strong></span>
     </span>;
   }
 
@@ -55,11 +55,11 @@ export default function VocabularySummary({ comparison, baselineAt, addedAt, com
   return (
     <section aria-label="Vocabulary estimate" className="rounded-2xl border border-stone-200 bg-white p-5 text-left shadow-sm sm:p-6">
       {current ? <div className="flex flex-wrap items-center gap-x-7 gap-y-4">
-        <FamiliarityRing estimate={current} />
+        <CoverageRing estimate={current} />
         <div className="min-w-[11rem] flex-1">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">Vocabulary</p>
-          <h2 className="mt-1 text-xl font-semibold tracking-tight text-stone-900">Average familiarity</h2>
-          <p className="mt-1 text-sm text-stone-500">Estimated range</p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-stone-900">Estimated vocabulary coverage</h2>
+          <p className="mt-1 text-sm text-stone-500">Provisionally known to possibly known</p>
           <div className="mt-4"><DateAdded value={addedAt} /></div>
         </div>
       </div> : <div>
@@ -69,18 +69,20 @@ export default function VocabularySummary({ comparison, baselineAt, addedAt, com
       </div>}
       {current && <details className="mt-5 border-t border-stone-100 pt-4 text-sm text-stone-600">
         <summary className="w-fit cursor-pointer font-semibold text-emerald-800 hover:text-emerald-950">About this estimate</summary>
-        <p className="mt-3 leading-relaxed">The score averages matched word occurrences. Green reflects recorded ratings; amber shows the possible contribution of unrated words, which you may already know.</p>
+        <p className="mt-3 leading-relaxed">Green counts occurrences of dictionary groups rated 3–5 as provisionally known. Amber represents groups rated 1–2, unrated groups, and unmatched groups: you may know some of these too. The range shows both possibilities, rather than a confidence interval.</p>
         <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-          <div><dt className="text-stone-500">Vocabulary difficulty</dt><dd className="font-semibold tabular-nums text-stone-800">{formatRange(current.difficulty_low, current.difficulty_high)} / 100</dd></div>
-          <div><dt className="text-stone-500">Difficult words <span className="text-xs">(rated 1–2)</span></dt><dd className="font-semibold tabular-nums text-stone-800">{current.low_rated_unique}</dd></div>
+          <div><dt className="text-stone-500">Provisionally known occurrences <span className="text-xs">(rated 3–5)</span></dt><dd className="font-semibold tabular-nums text-stone-800">{current.known_occurrences} of {current.coverage_occurrences}</dd></div>
+          <div><dt className="text-stone-500">Uncertain occurrences</dt><dd className="font-semibold tabular-nums text-stone-800">{current.uncertain_occurrences}</dd></div>
+          <div><dt className="text-stone-500">Uncertain rated words <span className="text-xs">(rated 1–2)</span></dt><dd className="font-semibold tabular-nums text-stone-800">{current.uncertain_rated_unique}</dd></div>
           <div><dt className="text-stone-500">Unrated words</dt><dd className="font-semibold tabular-nums text-stone-800">{current.unrated_unique}</dd></div>
           <div><dt className="text-stone-500">Rated occurrences</dt><dd className="font-semibold tabular-nums text-stone-800">{current.rated_percent}% of {current.matched_occurrences}</dd></div>
           <div><dt className="text-stone-500">Dictionary matches</dt><dd className="font-semibold tabular-nums text-stone-800">{current.dictionary_match_percent}% · {current.unmatched_groups} unmatched</dd></div>
-          {before && <div><dt className="text-stone-500">Baseline{formatDate(baselineAt) ? ` · ${formatDate(baselineAt)}` : ""}</dt><dd className="font-semibold tabular-nums text-stone-800">{formatRange(before.familiarity_low, before.familiarity_high)} / 100</dd></div>}
+          <div><dt className="text-stone-500">Weighted familiarity <span className="text-xs">(previous method, updated group count)</span></dt><dd className="font-semibold tabular-nums text-stone-800">{formatRange(current.familiarity_low, current.familiarity_high)} / 100</dd></div>
+          {before && <div><dt className="text-stone-500">Baseline coverage{formatDate(baselineAt) ? ` · ${formatDate(baselineAt)}` : ""}</dt><dd className="font-semibold tabular-nums text-stone-800">{formatRange(before.coverage_low, before.coverage_high)}%</dd></div>}
         </dl>
         {before && <p className="mt-4">Since the baseline: {comparison.improved_unique} ratings increased, {comparison.declined_unique} decreased, and {comparison.newly_rated_unique} words were newly rated.</p>}
         {segmentsWithText !== undefined && segmentCount !== undefined && segmentsWithText < segmentCount && <p className="mt-2">The estimate covers {segmentsWithText} of {segmentCount} segments with transcript text.</p>}
-        <p className="mt-2 leading-relaxed">Unmatched words are excluded. The estimate does not measure grammar or listening comprehension. Rating changes may reflect knowledge you already had or learned elsewhere.</p>
+        <p className="mt-2 leading-relaxed">Groups can contain more than one word, and grouping differs between languages, so this is not directly comparable to published word-coverage figures or across languages. Ratings do not guarantee understanding in context or in speech. The estimate does not measure grammar or listening comprehension. Rating changes may reflect knowledge you already had or learned elsewhere.</p>
       </details>}
     </section>
   );

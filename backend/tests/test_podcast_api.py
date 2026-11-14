@@ -465,6 +465,10 @@ def test_vocabulary_ranges_baseline_and_replacement(client, monkeypatch):
     assert result["episode"]["current"]["familiarity_low"] == 83.3
     assert result["episode"]["current"]["difficulty_high"] == 16.7
     assert result["episode"]["current"]["unmatched_groups"] == 1
+    assert result["episode"]["baseline"]["coverage_low"] == 28.5
+    assert result["episode"]["baseline"]["coverage_high"] == 100.0
+    assert result["episode"]["current"]["coverage_low"] == 85.7
+    assert result["episode"]["current"]["coverage_high"] == 100.0
     assert result["episode"]["improved_unique"] == 1
     assert result["episode"]["newly_rated_unique"] == 1
     assert len(result["segments"]) == 2
