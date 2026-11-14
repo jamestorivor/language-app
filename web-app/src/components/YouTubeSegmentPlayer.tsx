@@ -72,12 +72,14 @@ export default function YouTubeSegmentPlayer({
   endTime,
   title,
   isPinned,
+  onPlaybackStart,
 }: {
   videoId: string;
   startTime: number;
   endTime: number;
   title: string;
   isPinned: boolean;
+  onPlaybackStart: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<Player | null>(null);
@@ -141,6 +143,7 @@ export default function YouTubeSegmentPlayer({
             onStateChange: ({ data, target }) => {
               if (lifecycle.signal.aborted) return;
               setPlaying(data === 1 || data === 3);
+              if (data === 1) onPlaybackStart();
               if (data === 0) {
                 cueSegment(target);
                 setCurrentTime(startTime);
@@ -170,7 +173,7 @@ export default function YouTubeSegmentPlayer({
       player?.destroy();
       container.replaceChildren();
     };
-  }, [videoId, startTime, endTime]);
+  }, [videoId, startTime, endTime, onPlaybackStart]);
 
   const skip = (seconds: number) => {
     const player = playerRef.current;

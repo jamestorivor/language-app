@@ -7,7 +7,7 @@ import type { TokenGroup } from "../../contracts/japanese";
 import "./InteractiveTranscript.css";
 import WordPanel from "./WordPanel";
 
-export default function InteractiveTranscript({ text, language }: { text: string; language: "ja" | "en" }) {
+export default function InteractiveTranscript({ text, language, onRatingSaved }: { text: string; language: "ja" | "en"; onRatingSaved?: () => void }) {
   const [tokens, setTokens] = useState<TokenGroup[] | null>(null);
   const [selection, setSelection] = useState<{
     index: number;
@@ -57,6 +57,7 @@ export default function InteractiveTranscript({ text, language }: { text: string
     if (selection?.source === "list") setSelection(null);
     try {
       const result = await updateWordFamiliarity(wordId, score, language);
+      onRatingSaved?.();
       setTokens(
         (current) =>
           current?.map((token) =>

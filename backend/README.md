@@ -47,3 +47,11 @@ Using POS and commonness to rank.
 ### Podcast duration lookup
 
 Set `YOUTUBE_API_KEY` for YouTube videos and `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` for Spotify episodes in the backend environment. `SPOTIFY_MARKET` optionally selects the Spotify market (defaults to `SG`). Episode creation reads duration from provider metadata; it does not download media.
+
+Podcast vocabulary estimates require the latest database migration (`alembic upgrade head`).
+Ratings are captured when an episode's transcript is added. Existing episodes get a dated
+baseline the first time their vocabulary is viewed. Replacing a transcript, changing its
+language, or rebuilding segments starts a new baseline. Estimates use matched transcript
+vocabulary and do not measure listening comprehension or grammar.
+Episode added dates are recorded for new episodes; older episodes show the date as
+unavailable because it was not previously stored.

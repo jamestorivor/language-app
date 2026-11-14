@@ -22,6 +22,7 @@ export type EpisodeResponse = Omit<
   id: number;
   user_id: number;
   duration: number;
+  added_at: string | null;
 };
 
 // Chunk times are numeric offsets; end_time must be greater than start_time.
@@ -50,3 +51,33 @@ export type SegmentResponse = CreateSegmentRequest & {
 };
 
 export type ListSegmentResponse = SegmentResponse[];
+
+export type VocabularyEstimate = {
+  familiarity_low: number;
+  familiarity_high: number;
+  difficulty_low: number;
+  difficulty_high: number;
+  rated_percent: number;
+  matched_occurrences: number;
+  unmatched_groups: number;
+  dictionary_match_percent: number;
+  unrated_unique: number;
+  low_rated_unique: number;
+};
+
+export type VocabularyComparison = {
+  baseline: VocabularyEstimate | null;
+  current: VocabularyEstimate | null;
+  improved_unique: number;
+  declined_unique: number;
+  newly_rated_unique: number;
+};
+
+export type EpisodeVocabulary = {
+  added_at: string | null;
+  baseline_at: string | null;
+  segments_with_text: number;
+  segment_count: number;
+  episode: VocabularyComparison | null;
+  segments: Record<string, VocabularyComparison>;
+};

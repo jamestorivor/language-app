@@ -5,6 +5,7 @@ import re
 
 from app.services.podcast.youtube_connect import get_transcript
 from app.services.podcast.duration import get_episode_duration
+from app.services.podcast.vocabulary import episode_summary, reset_baseline
 from app.services.podcast.external_transcript import parse_external_transcript
 from app.data_access import podcast as data
 from app.db.session import get_db
@@ -92,13 +93,27 @@ def update_episode(episode_id: int, request: PodcastEpisodeUpdate, db: Session =
     elif request.external_transcript is not None:
         transcript = parse_external_transcript(request.external_transcript, episode.duration, file_format=request.external_transcript_format)
         data.replace_episode_transcript(db, DEVELOPMENT_USER_ID, episode_id, transcript)
+    reset_vocabulary = (request.chunk_interval is not None or request.external_transcript is not None
+                        or (request.language is not None and request.language != episode.language))
     episode.title = request.title
     episode.author = request.author
     if request.language is not None:
         episode.language = request.language
+    if reset_vocabulary:
+        db.flush()
+        chunks = data.list_chunks(db, DEVELOPMENT_USER_ID, episode_id)
+        reset_baseline(db, episode, any(c.transcript and c.transcript.text.strip() for c in chunks))
     db.commit()
     db.refresh(episode)
     return episode
+
+
+@router.get("/{episode_id}/vocabulary")
+def read_vocabulary(episode_id: int, db: Session = Depends(get_db)):
+    episode = data.get_episode(db, DEVELOPMENT_USER_ID, episode_id)
+    if episode is None:
+        raise HTTPException(status_code=404, detail="Episode not found")
+    return episode_summary(db, episode, data.list_chunks(db, DEVELOPMENT_USER_ID, episode_id))
 
 
 @router.post("/{episode_id}/chunks", response_model=PodcastChunkResponse, status_code=status.HTTP_201_CREATED)

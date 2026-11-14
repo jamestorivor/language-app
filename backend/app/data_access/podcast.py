@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.models.podcast import PodcastChunk, PodcastEpisode, PodcastTranscript
+from app.services.podcast.vocabulary import reset_baseline
 
 
 def get_episode_by_audio_location(session: Session, user_id: int, audio_location: str):
@@ -37,6 +38,8 @@ def add_episode(session: Session, user_id: int, audio_location: str, title: str,
                 chunk.transcript = PodcastTranscript(text=" ".join(chunk_texts[index]))
             session.add(chunk)
 
+        if transcript and any(item["text"].strip() for item in transcript):
+            reset_baseline(session, episode, True)
         session.commit()
     except IntegrityError:
         session.rollback()
@@ -125,6 +128,9 @@ def save_transcript(session: Session, chunk: PodcastChunk, text: str):
         chunk.transcript = PodcastTranscript(text=text)
     else:
         chunk.transcript.text = text
+    session.flush()
+    chunks = list_chunks(session, chunk.user_id, chunk.podcast_id)
+    reset_baseline(session, chunk.episode, any(c.transcript and c.transcript.text.strip() for c in chunks))
     session.commit()
     return chunk.transcript
 

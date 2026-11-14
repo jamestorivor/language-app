@@ -4,7 +4,8 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from app.db.models.podcast import PodcastChunk, PodcastEpisode, PodcastTranscript
+from app.db.models.podcast import (PodcastChunk, PodcastEpisode, PodcastTranscript,
+                                   PodcastVocabularyBaseline, PodcastVocabularyAnalysis)
 from app.db.models.user import User
 from app.db.session import get_db
 from app.main import app
@@ -14,13 +15,15 @@ from app.main import app
 def client(monkeypatch):
     monkeypatch.setattr("app.api.podcast.get_episode_duration", lambda url: 60.0)
     monkeypatch.setattr("app.api.podcast.get_transcript", lambda video_id, language: [])
+    monkeypatch.setattr("app.services.podcast.vocabulary.ratings", lambda *args: {})
+    monkeypatch.setattr("app.services.podcast.vocabulary.ratings", lambda session, user_id, language: {})
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 
     @event.listens_for(engine, "connect")
     def enable_foreign_keys(connection, _):
         connection.execute("PRAGMA foreign_keys=ON")
 
-    for model in (User, PodcastEpisode, PodcastChunk, PodcastTranscript):
+    for model in (User, PodcastEpisode, PodcastChunk, PodcastTranscript, PodcastVocabularyBaseline, PodcastVocabularyAnalysis):
         model.__table__.create(engine)
     with Session(engine) as session:
         session.add_all([User(id=1, name="Test"), User(id=2, name="Other")])
@@ -437,3 +440,102 @@ def test_invalid_subtitle_upload_does_not_change_episode(client, file_format, co
     assert result.status_code == 422
     assert client.get(f'/podcasts/{episode_id}').json()['title'] == 'Original'
     assert client.get(f'/podcasts/{episode_id}/chunks').json() == chunks
+
+
+def test_vocabulary_ranges_baseline_and_replacement(client, monkeypatch):
+    from types import SimpleNamespace
+    scores = {"1": 5, "2": 1}
+    monkeypatch.setattr("app.services.podcast.vocabulary.ratings", lambda session, user_id, language: dict(scores))
+    calls = []
+    def parse(session, text, user_id, language):
+        calls.append(text)
+        return [SimpleNamespace(word_id=int(word), display=True, text=word) if word.isdigit()
+                else SimpleNamespace(word_id=None, display=False, text=word) for word in text.split()]
+    monkeypatch.setattr("app.services.podcast.vocabulary.parse_groups", parse)
+    episode_id = client.post("/podcasts", json={
+        "audio_location": "vocab", "title": "Vocabulary", "author": "Author", "chunk_interval": 30,
+        "podcast_details": {"provider": "spotify", "id": "id"},
+        "external_transcript": "[00:00] 1 1 2 3 unknown\n[00:30] 3 3",
+    }).json()["id"]
+    scores.update({"2": 3, "3": 4})
+    result = client.get(f"/podcasts/{episode_id}/vocabulary").json()
+    assert result["baseline_at"]
+    assert result["episode"]["baseline"]["familiarity_low"] == 35.0
+    assert result["episode"]["baseline"]["familiarity_high"] == 85.0
+    assert result["episode"]["current"]["familiarity_low"] == 83.3
+    assert result["episode"]["current"]["difficulty_high"] == 16.7
+    assert result["episode"]["current"]["unmatched_groups"] == 1
+    assert result["episode"]["improved_unique"] == 1
+    assert result["episode"]["newly_rated_unique"] == 1
+    assert len(result["segments"]) == 2
+    assert result["segments_with_text"] == 2
+    client.get(f"/podcasts/{episode_id}/vocabulary")
+    assert len(calls) == 2
+    response = client.patch(f"/podcasts/{episode_id}", json={"title": "Vocabulary", "author": "Author", "external_transcript": "[00:00] 2 3"})
+    assert response.status_code == 200
+    updated = client.get(f"/podcasts/{episode_id}/vocabulary").json()
+    assert updated["episode"]["baseline"] == updated["episode"]["current"]
+    assert updated["episode"]["newly_rated_unique"] == 0
+    assert updated["segments_with_text"] == 1
+    assert len(calls) == 3
+
+
+def test_vocabulary_empty_and_other_users(client):
+    episode_id = client.post("/podcasts", json={"audio_location": "no-text", "title": "No text", "author": "A",
+        "chunk_interval": 30, "podcast_details": {"provider": "spotify", "id": "id"}}).json()["id"]
+    response = client.get(f"/podcasts/{episode_id}/vocabulary")
+    assert response.status_code == 200
+    assert response.json()["episode"] is None
+    assert response.json()["baseline_at"] is None
+    assert client.get("/podcasts/999999/vocabulary").status_code == 404
+
+
+def test_english_vocabulary_uses_dictionary_and_saved_ratings(client, monkeypatch):
+    from app.db.models.english_vocab import EnglishDictionary, EnglishWordFamiliarity
+    from app.services.podcast import vocabulary
+    from sqlalchemy import select
+
+    def real_ratings(session, user_id, language):
+        return {str(word): score for word, score in session.execute(
+            select(EnglishWordFamiliarity.word_id, EnglishWordFamiliarity.familiarity_score)
+            .where(EnglishWordFamiliarity.user_id == user_id))}
+    monkeypatch.setattr(vocabulary, "ratings", real_ratings)
+    with next(iter(app.dependency_overrides[get_db]())) as session:
+        EnglishDictionary.__table__.create(session.bind)
+        EnglishWordFamiliarity.__table__.create(session.bind)
+        session.add_all([EnglishDictionary(word_id=1, headword="word", lookup_key="word", meaning="単語"),
+                         EnglishDictionary(word_id=2, headword="go", lookup_key="go", meaning="行く")])
+        session.add(EnglishWordFamiliarity(user_id=1, word_id=1, familiarity_score=1))
+        session.commit()
+    episode_id = client.post("/podcasts", json={"audio_location": "english-vocab", "title": "English", "author": "A",
+        "language": "en", "chunk_interval": 60, "podcast_details": {"provider": "spotify", "id": "id"},
+        "external_transcript": "Words went."}).json()["id"]
+    assert client.patch("/eng/update_familiarity_score", json={"word_id": 1, "new_score": 5}).status_code == 200
+    result = client.get(f"/podcasts/{episode_id}/vocabulary").json()["episode"]
+    assert result["baseline"]["familiarity_low"] == 5
+    assert result["baseline"]["familiarity_high"] == 55
+    assert result["current"]["familiarity_low"] == 50
+    assert result["current"]["familiarity_high"] == 100
+    assert result["improved_unique"] == 1
+
+
+def test_episode_added_date_is_preserved_and_legacy_dates_are_unknown(client):
+    from datetime import datetime
+    from sqlalchemy import update
+
+    episode = client.post("/podcasts", json={"audio_location": "date-added", "title": "Episode", "author": "A",
+        "chunk_interval": 30, "podcast_details": {"provider": "spotify", "id": "id"}}).json()
+    episode_id = episode["id"]
+    added_at = episode["added_at"]
+    assert added_at is not None
+    datetime.fromisoformat(added_at.replace("Z", "+00:00"))
+    assert client.get(f"/podcasts/{episode_id}").json()["added_at"] == added_at
+    assert client.get(f"/podcasts/{episode_id}/vocabulary").json()["added_at"] == added_at
+    assert client.patch(f"/podcasts/{episode_id}", json={"title": "Updated", "author": "A"}).json()["added_at"] == added_at
+
+    # Episodes that predate the feature must not be given an invented date.
+    with next(iter(app.dependency_overrides[get_db]())) as session:
+        session.execute(update(PodcastEpisode).where(PodcastEpisode.id == episode_id).values(added_at=None))
+        session.commit()
+    assert client.get(f"/podcasts/{episode_id}").json()["added_at"] is None
+    assert client.get(f"/podcasts/{episode_id}/vocabulary").json()["added_at"] is None

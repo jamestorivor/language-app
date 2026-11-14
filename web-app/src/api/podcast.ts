@@ -6,6 +6,7 @@ import type {
   EpisodeResponse,
   SegmentResponse,
   PodcastLanguage,
+  EpisodeVocabulary,
 } from "../contracts/podcast";
 
 const API_PREFIX = "podcasts";
@@ -93,7 +94,14 @@ async function getSegmentById(segment_id: number): Promise<SegmentResponse> {
   });
 }
 
+async function getVocabulary(episodeId: number): Promise<EpisodeVocabulary> {
+  const response = await loggedFetch("podcast.vocabulary", new URL(`${API_PREFIX}/${episodeId}/vocabulary`, API_BASE_URL));
+  if (!response.ok) throw new Error(`Could not load vocabulary estimate (response ${response.status}).`);
+  return response.json();
+}
+
 export {
+  getVocabulary,
   getEpisodes,
   createEpisode,
   getSegments,

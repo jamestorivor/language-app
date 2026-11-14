@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
-import type { EpisodeResponse, SegmentResponse } from "../contracts/podcast";
-import { getEpisodeById, getSegmentById } from "../api/podcast";
+import type { EpisodeResponse, SegmentResponse, EpisodeVocabulary } from "../contracts/podcast";
+import { getEpisodeById, getSegmentById, getVocabulary } from "../api/podcast";
 import { formatTime } from "../utils/formatTime";
 import parsePodcastLink from "../utils/urlParser";
+import VocabularySummary from "./VocabularySummary";
 import InteractiveTranscript from "./transcript/InteractiveTranscript";
 import YouTubeSegmentPlayer from "./YouTubeSegmentPlayer";
+import { saveLastWatched } from "../utils/lastWatched";
 
 export default function PodcastDetail() {
   const { segmentId } = useParams();
@@ -21,6 +23,8 @@ function SegmentDetail({ segmentId }: { segmentId: string | undefined }) {
       : undefined,
   );
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [vocabulary, setVocabulary] = useState<EpisodeVocabulary | null>(null);
+  const [vocabularyError, setVocabularyError] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
 
   useEffect(() => {
@@ -36,6 +40,13 @@ function SegmentDetail({ segmentId }: { segmentId: string | undefined }) {
     void loadSegment(id);
     return () => { cancelled = true; };
   }, [id]);
+
+  const refreshVocabulary = useCallback(() => {
+    if (!segment) return;
+    void getVocabulary(segment.podcast_id).then((result) => { setVocabulary(result); setVocabularyError(false); }).catch(() => setVocabularyError(true));
+  }, [segment]);
+
+  useEffect(() => { refreshVocabulary(); }, [refreshVocabulary]);
 
   if (loadError) return <p role="alert">{loadError}</p>;
   if (!segment) return <>Loading...</>;
@@ -64,7 +75,8 @@ function SegmentDetail({ segmentId }: { segmentId: string | undefined }) {
           >
             <SegmentPlayer segment={segment} isPinned={isPinned} onTogglePin={() => setIsPinned((pinned) => !pinned)} />
           </section>
-          <InteractiveTranscript key={`${segment.id}-${segment.episode_language}`} text={segment.transcript?.text ?? ""} language={segment.episode_language} />
+          {vocabularyError ? <p role="alert" className="text-sm text-red-700">Could not load the vocabulary estimate.</p> : vocabulary ? <VocabularySummary comparison={vocabulary.segments[String(segment.id)]} baselineAt={vocabulary.baseline_at} addedAt={vocabulary.added_at} /> : <p className="text-sm text-stone-500">Calculating vocabulary estimate…</p>}
+          <InteractiveTranscript onRatingSaved={refreshVocabulary} key={`${segment.id}-${segment.episode_language}`} text={segment.transcript?.text ?? ""} language={segment.episode_language} />
         </div>
       </div>
     );
@@ -73,6 +85,9 @@ function SegmentDetail({ segmentId }: { segmentId: string | undefined }) {
 function SegmentPlayer({ segment, isPinned, onTogglePin }: { segment: SegmentResponse; isPinned: boolean; onTogglePin: () => void }) {
   const [episode, setEpisode] = useState<EpisodeResponse>();
   const [error, setError] = useState(false);
+  const handlePlaybackStart = useCallback(() => {
+    if (episode) saveLastWatched(episode, segment.start_time);
+  }, [episode, segment.start_time]);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +121,7 @@ function SegmentPlayer({ segment, isPinned, onTogglePin }: { segment: SegmentRes
         endTime={segment.end_time}
         title={`${segment.episode_title} segment`}
         isPinned={isPinned}
+        onPlaybackStart={handlePlaybackStart}
       />
     </>
   );

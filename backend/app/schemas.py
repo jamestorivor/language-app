@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, model_validator
+from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -327,6 +328,7 @@ class PodcastEpisodeResponse(BaseModel):
     author: str
     duration: float
     language: Literal["ja", "en"]
+    added_at: datetime | None
 
 
 class PodcastChunkCreate(BaseModel):

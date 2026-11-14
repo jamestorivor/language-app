@@ -4,12 +4,15 @@ import type {
   EpisodeResponse,
   ListSegmentResponse,
   PodcastLanguage,
+  EpisodeVocabulary,
 } from "../contracts/podcast";
-import { deleteEpisode, getEpisodeById, getSegments, updateEpisode } from "../api/podcast";
+import { deleteEpisode, getEpisodeById, getSegments, getVocabulary, updateEpisode } from "../api/podcast";
 import { formatTime } from "../utils/formatTime";
+import VocabularySummary from "./VocabularySummary";
 import TranscriptFileInput from "./TranscriptFileInput";
 import { readTranscriptFile } from "../utils/transcriptFile";
 import parsePodcastLink from "../utils/urlParser";
+import { getLastWatched } from "../utils/lastWatched";
 
 // export const sampleApiSegments: ListSegmentResponse = [
 //   {
@@ -53,6 +56,8 @@ export default function PodcastSegments() {
     (location.state as { episode?: EpisodeResponse } | null)?.episode,
   );
   const [segements, setSegements] = useState<ListSegmentResponse>([]);
+  const [vocabulary, setVocabulary] = useState<EpisodeVocabulary | null>(null);
+  const [vocabularyError, setVocabularyError] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -84,6 +89,7 @@ export default function PodcastSegments() {
       setEpisode(await updateEpisode(id, { title, author, language, external_transcript, external_transcript_format, chunk_interval, refresh_youtube_transcript }));
       if (external_transcript !== undefined || chunk_interval !== undefined) setSegements(await getSegments(id));
       setEditing(false);
+      void getVocabulary(id).then((result) => { setVocabulary(result); setVocabularyError(false); }).catch(() => setVocabularyError(true));
     } catch (error) {
       setEditError(error instanceof Error ? error.message : "Could not save changes. Please try again.");
     } finally {
@@ -114,7 +120,12 @@ export default function PodcastSegments() {
       setSegements(segements);
     }
     loadSegments();
+    void getVocabulary(id).then(setVocabulary).catch(() => setVocabularyError(true));
   }, [podcastId]);
+  const lastWatched = episode ? getLastWatched(episode) : null;
+  const lastWatchedSegment = lastWatched === null ? undefined : segements.find(
+    (segment) => segment.start_time <= lastWatched && lastWatched < segment.end_time,
+  );
   return (
     <div className="mx-auto max-w-4xl">
       <Link
@@ -159,9 +170,10 @@ export default function PodcastSegments() {
               <div>
                 <label htmlFor="edit-segment-size" className="block text-sm font-semibold text-stone-700">New segment length (minutes)</label>
                 <input id="edit-segment-size" name="segmentSizeMinutes" type="number" min="0.01" step="any" placeholder="Leave blank to keep current segments" aria-describedby="edit-segment-size-help" className="mt-2 w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:outline-2 focus:outline-emerald-800" />
-                <p id="edit-segment-size-help" className="mt-2 text-sm text-stone-500">Changing the length rebuilds every segment and replaces its transcript. Upload a timestamped transcript below{parsePodcastLink(episode.audio_location)?.provider === "youtube" ? " or use YouTube captions" : ""}. Existing segment links may change or stop working.</p>
+                <p id="edit-segment-size-help" className="mt-2 text-sm text-stone-500">Changing the length rebuilds every segment and replaces its transcript and vocabulary baseline. Upload a timestamped transcript below{parsePodcastLink(episode.audio_location)?.provider === "youtube" ? " or use YouTube captions" : ""}. Existing segment links may change or stop working.</p>
               </div>
               <TranscriptFileInput id="edit-transcript" />
+              <p className="text-sm text-stone-500">Replacing the transcript or changing the language starts a new vocabulary baseline.</p>
               {parsePodcastLink(episode.audio_location)?.provider === "youtube" && (
                 <label className="flex items-start gap-2 text-sm text-stone-700">
                   <input type="checkbox" name="refreshYoutubeTranscript" className="mt-1" />
@@ -183,6 +195,9 @@ export default function PodcastSegments() {
           )}
         </div>
       )}
+      <div className="mx-auto mt-8 max-w-2xl">
+        {vocabularyError ? <p role="alert" className="text-sm text-red-700">Could not load the vocabulary estimate.</p> : vocabulary ? <VocabularySummary comparison={vocabulary.episode} baselineAt={vocabulary.baseline_at} addedAt={vocabulary.added_at} segmentsWithText={vocabulary.segments_with_text} segmentCount={vocabulary.segment_count} /> : <p className="text-sm text-stone-500">Calculating vocabulary estimate…</p>}
+      </div>
       <section className="mt-12 border-t border-stone-200 pt-8 sm:mt-16" aria-labelledby="segments-heading">
         <h2 id="segments-heading" className="text-xl font-semibold tracking-tight">Choose a segment</h2>
         <p className="mt-1 text-sm text-stone-500">
@@ -194,18 +209,22 @@ export default function PodcastSegments() {
               <Link
                 state={{ segment: episode ? { ...segment, episode_title: episode.title, episode_author: episode.author, episode_language: episode.language } : segment }}
                 to={`/podcasts/segments/${segment.id}`}
-                className="group flex h-full items-center gap-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm transition hover:border-emerald-700/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 sm:p-5"
+                className={`group flex h-full items-center gap-4 rounded-2xl border p-4 shadow-sm transition hover:border-emerald-700/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 sm:p-5 ${segment.id === lastWatchedSegment?.id ? "border-emerald-700 bg-emerald-50/50" : "border-stone-200 bg-white"}`}
               >
                 <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-sm font-bold tabular-nums text-emerald-800">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-xs font-semibold uppercase tracking-wide text-stone-500">
-                    Segment {index + 1}
+                    Segment <span className="sr-only">{index + 1}</span>
                   </span>
                   <span className="mt-1 block text-base font-semibold tabular-nums text-stone-900">
                     {formatTime(segment.start_time)} – {formatTime(segment.end_time)}
                   </span>
+                  {vocabulary?.segments[String(segment.id)]?.current && <VocabularySummary compact comparison={vocabulary.segments[String(segment.id)]} />}
+                  {segment.id === lastWatchedSegment?.id && (
+                    <span className="mt-2 inline-block rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-900">Last watched</span>
+                  )}
                 </span>
                 <span aria-hidden="true" className="text-lg text-stone-400 transition-colors group-hover:text-emerald-800">→</span>
               </Link>
