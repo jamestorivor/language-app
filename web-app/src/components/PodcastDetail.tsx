@@ -9,6 +9,12 @@ import InteractiveTranscript from "./transcript/InteractiveTranscript";
 import YouTubeSegmentPlayer from "./YouTubeSegmentPlayer";
 import { saveLastWatched } from "../utils/lastWatched";
 
+const PINNED_VIDEO_SIZES = [
+  { width: "20rem", percent: "65%" },
+  { width: "36rem", percent: "80%" },
+  { width: "56rem", percent: "100%" },
+];
+
 export default function PodcastDetail() {
   const { segmentId } = useParams();
   return <SegmentDetail key={segmentId} segmentId={segmentId} />;
@@ -26,6 +32,7 @@ function SegmentDetail({ segmentId }: { segmentId: string | undefined }) {
   const [vocabulary, setVocabulary] = useState<EpisodeVocabulary | null>(null);
   const [vocabularyError, setVocabularyError] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
+  const [pinnedSize, setPinnedSize] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,11 +76,12 @@ function SegmentDetail({ segmentId }: { segmentId: string | undefined }) {
           <section
             className={`mx-auto w-full rounded-2xl border border-stone-200 bg-white shadow-sm ${
               isPinned
-                ? "sticky top-[env(safe-area-inset-top)] z-30 max-w-[min(36rem,calc(70dvh+1.5rem))] p-3 shadow-lg sm:p-4"
+                ? "sticky top-[env(safe-area-inset-top)] z-30 p-2 shadow-lg"
                 : "max-w-xl p-4 sm:p-6"
             }`}
+            style={isPinned ? { width: `min(${PINNED_VIDEO_SIZES[pinnedSize].width}, ${PINNED_VIDEO_SIZES[pinnedSize].percent}, calc(115.55dvh - 6.22rem))` } : undefined}
           >
-            <SegmentPlayer segment={segment} isPinned={isPinned} onTogglePin={() => setIsPinned((pinned) => !pinned)} />
+            <SegmentPlayer segment={segment} isPinned={isPinned} pinnedSize={pinnedSize} onChangePinnedSize={setPinnedSize} onTogglePin={() => setIsPinned((pinned) => !pinned)} />
           </section>
           {vocabularyError ? <p role="alert" className="text-sm text-red-700">Could not load the vocabulary estimate.</p> : vocabulary ? <VocabularySummary comparison={vocabulary.segments[String(segment.id)]} baselineAt={vocabulary.baseline_at} addedAt={vocabulary.added_at} /> : <p className="text-sm text-stone-500">Calculating vocabulary estimate…</p>}
           <InteractiveTranscript onRatingSaved={refreshVocabulary} key={`${segment.id}-${segment.episode_language}`} text={segment.transcript?.text ?? ""} language={segment.episode_language} />
@@ -82,7 +90,7 @@ function SegmentDetail({ segmentId }: { segmentId: string | undefined }) {
     );
 }
 
-function SegmentPlayer({ segment, isPinned, onTogglePin }: { segment: SegmentResponse; isPinned: boolean; onTogglePin: () => void }) {
+function SegmentPlayer({ segment, isPinned, pinnedSize, onChangePinnedSize, onTogglePin }: { segment: SegmentResponse; isPinned: boolean; pinnedSize: number; onChangePinnedSize: (size: number) => void; onTogglePin: () => void }) {
   const [episode, setEpisode] = useState<EpisodeResponse>();
   const [error, setError] = useState(false);
   const handlePlaybackStart = useCallback(() => {
@@ -109,12 +117,18 @@ function SegmentPlayer({ segment, isPinned, onTogglePin }: { segment: SegmentRes
 
   return (
     <>
-      <div className="flex min-w-0 items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold tracking-tight">Player</h2>
-        <button type="button" aria-pressed={isPinned} onClick={onTogglePin} className="shrink-0 rounded-lg border border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">
-          {isPinned ? "Unpin video" : "Pin to top"}
-        </button>
-      </div>
+      {isPinned ? (
+        <div className="flex items-center justify-end gap-1">
+          <button type="button" aria-label="Make video smaller" disabled={pinnedSize === 0} onClick={() => onChangePinnedSize(pinnedSize - 1)} className="h-9 min-w-9 rounded-lg text-lg font-semibold text-stone-700 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:opacity-40">−</button>
+          <button type="button" aria-label="Make video larger" disabled={pinnedSize === PINNED_VIDEO_SIZES.length - 1} onClick={() => onChangePinnedSize(pinnedSize + 1)} className="h-9 min-w-9 rounded-lg text-lg font-semibold text-stone-700 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:opacity-40">+</button>
+          <button type="button" onClick={onTogglePin} className="rounded-lg px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Unpin video</button>
+        </div>
+      ) : (
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold tracking-tight">Player</h2>
+          <button type="button" onClick={onTogglePin} className="shrink-0 rounded-lg border border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Pin to top</button>
+        </div>
+      )}
       <YouTubeSegmentPlayer
         videoId={link.id}
         startTime={segment.start_time}

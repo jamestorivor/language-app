@@ -264,7 +264,7 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
               <p
                 ref={transcriptRef}
                 lang={language}
-                className="transcript-text max-w-2xl whitespace-pre-wrap break-words text-left text-base leading-[2] tracking-wide text-stone-800 sm:text-lg"
+                className="transcript-text whitespace-pre-wrap break-words text-left text-base leading-[2] tracking-wide text-stone-800 sm:text-lg"
                 onPointerMove={(event) => moveGuide(event.clientY)}
                 onPointerDown={(event) => moveGuide(event.clientY)}
                 onFocusCapture={(event) => {

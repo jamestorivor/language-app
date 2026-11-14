@@ -198,7 +198,7 @@ export default function YouTubeSegmentPlayer({
     <>
       <div
         ref={containerRef}
-        className={`${isPinned ? "mt-3" : "mt-4"} aspect-video w-full overflow-hidden rounded-lg bg-stone-950 [&_iframe]:h-full [&_iframe]:w-full`}
+        className={`${isPinned ? "mt-1" : "mt-4"} aspect-video w-full overflow-hidden rounded-lg bg-stone-950 [&_iframe]:h-full [&_iframe]:w-full`}
         aria-label={title}
       />
       {error && (
