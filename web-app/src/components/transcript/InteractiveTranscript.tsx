@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   fetchJapaneseTokenGroups,
   updateWordFamiliarity,
@@ -18,6 +18,25 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
   const [saving, setSaving] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [page, setPage] = useState(0);
+  const [guideEnabled, setGuideEnabled] = useState(true);
+  const [guideTop, setGuideTop] = useState<number | null>(null);
+  const transcriptRef = useRef<HTMLParagraphElement>(null);
+
+  function moveGuide(clientY: number) {
+    const paragraph = transcriptRef.current;
+    if (!guideEnabled || !paragraph) return;
+    const lineHeight = parseFloat(getComputedStyle(paragraph).lineHeight);
+    const bounds = paragraph.getBoundingClientRect();
+    if (!Number.isFinite(lineHeight) || lineHeight <= 0) return;
+    const line = Math.max(0, Math.floor((clientY - bounds.top) / lineHeight));
+    setGuideTop(line * lineHeight);
+  }
+
+  useEffect(() => {
+    const clearGuide = () => setGuideTop(null);
+    window.addEventListener("resize", clearGuide);
+    return () => window.removeEventListener("resize", clearGuide);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -25,6 +44,7 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
     setSelection(null);
     setError("");
     setPage(0);
+    setGuideTop(null);
     if (!text) return;
     fetchJapaneseTokenGroups(text, language)
       .then((groups) => {
@@ -222,14 +242,39 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
       </section>
       <section className="min-h-64 rounded-2xl border border-stone-200 bg-white px-6 py-7 shadow-sm sm:px-10 sm:py-9">
         <div className="mx-auto max-w-3xl">
-          <h2 className="text-xl font-semibold tracking-tight text-stone-950">Transcript</h2>
-          {text && <p className="mt-1 text-sm text-stone-500">Select a highlighted word to see its meaning.</p>}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold tracking-tight text-stone-950">Transcript</h2>
+            {text && (
+              <button
+                type="button"
+                aria-pressed={guideEnabled}
+                onClick={() => {
+                  setGuideEnabled((enabled) => !enabled);
+                  setGuideTop(null);
+                }}
+                className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-600"
+              >
+                Reading guide: {guideEnabled ? "On" : "Off"}
+              </button>
+            )}
+          </div>
+          {text && <p className="mt-1 text-sm text-stone-500">Select a highlighted word to see its meaning.{guideEnabled && " Move over or tap a line to follow along."}</p>}
           {text ? (
             <div className="mt-6">
               <p
+                ref={transcriptRef}
                 lang={language}
-                className="whitespace-pre-wrap break-words text-justify text-base leading-[2] tracking-wide text-stone-800 sm:text-lg"
+                className="transcript-text max-w-2xl whitespace-pre-wrap break-words text-left text-base leading-[2] tracking-wide text-stone-800 sm:text-lg"
+                onPointerMove={(event) => moveGuide(event.clientY)}
+                onPointerDown={(event) => moveGuide(event.clientY)}
+                onFocusCapture={(event) => {
+                  const bounds = event.target.getBoundingClientRect();
+                  moveGuide(bounds.top + bounds.height / 2);
+                }}
               >
+                {guideEnabled && guideTop !== null && (
+                  <span aria-hidden="true" className="transcript-guide" style={{ top: guideTop }} />
+                )}
                 {tokens ? (
                   <>
                     {content}
