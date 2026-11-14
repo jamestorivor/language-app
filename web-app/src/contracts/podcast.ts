@@ -10,11 +10,12 @@ export type CreateEpisodeRequest = {
   chunk_interval: number;
   podcast_details: PodcastLink;
   language: PodcastLanguage;
+  external_transcript?: string;
 };
 
 export type EpisodeResponse = Omit<
   CreateEpisodeRequest,
-  "chunk_interval" | "podcast_details"
+  "chunk_interval" | "podcast_details" | "external_transcript"
 > & {
   id: number;
   user_id: number;

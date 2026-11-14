@@ -1,5 +1,6 @@
 from math import ceil
 
+from fastapi import HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
@@ -80,6 +81,22 @@ def list_chunks(session: Session, user_id: int, podcast_id: int):
     return session.scalars(select(PodcastChunk).where(
         PodcastChunk.user_id == user_id, PodcastChunk.podcast_id == podcast_id
     ).options(selectinload(PodcastChunk.transcript), selectinload(PodcastChunk.episode)).order_by(PodcastChunk.start_time, PodcastChunk.id)).all()
+
+
+def replace_episode_transcript(session: Session, user_id: int, episode_id: int, snippets: list[dict]):
+    chunks = list_chunks(session, user_id, episode_id)
+    chunk_texts = [[] for _ in chunks]
+    for snippet in snippets:
+        matching = [index for index, chunk in enumerate(chunks) if chunk.start_time <= snippet["start"] < chunk.end_time]
+        if not matching:
+            raise HTTPException(status_code=422, detail="A transcript timestamp does not belong to an existing segment.")
+        for index in matching:
+            chunk_texts[index].append(snippet["text"])
+    for chunk, texts in zip(chunks, chunk_texts):
+        if chunk.transcript is None:
+            chunk.transcript = PodcastTranscript(text=" ".join(texts))
+        else:
+            chunk.transcript.text = " ".join(texts)
 
 
 def save_transcript(session: Session, chunk: PodcastChunk, text: str):

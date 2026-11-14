@@ -269,3 +269,41 @@ def test_podcast_default_and_invalid_language(client):
                "podcast_details": {"provider": "youtube", "id": "video"}}
     assert client.post("/podcasts", json={**payload, "language": "fr"}).status_code == 422
     assert client.post("/podcasts", json=payload).json()["language"] == "ja"
+
+
+def test_external_transcript_is_used_on_create_instead_of_youtube(client, monkeypatch):
+    def fail_if_called(*args):
+        raise AssertionError("An uploaded transcript should bypass the transcript provider")
+    monkeypatch.setattr("app.api.podcast.get_transcript", fail_if_called)
+    payload = {
+        "audio_location": "external-audio", "title": "Episode", "author": "Author",
+        "chunk_interval": 20, "podcast_details": {"provider": "youtube", "id": "video"},
+        "external_transcript": "[00:00] Hello\n[00:20] Next\n[00:41] Last",
+    }
+    response = client.post("/podcasts", json=payload)
+    assert response.status_code == 200
+    chunks = client.get(f"/podcasts/{response.json()['id']}/chunks").json()
+    assert [chunk["transcript"]["text"] for chunk in chunks] == ["Hello", "Next", "Last"]
+    assert client.post("/podcasts", json=payload).status_code == 409
+
+
+def test_external_transcript_edit_is_atomic_and_optional(client):
+    response = client.post("/podcasts", json={
+        "audio_location": "edit-external", "title": "Before", "author": "Author",
+        "chunk_interval": 20, "podcast_details": {"provider": "spotify", "id": "episode"},
+        "external_transcript": "A plain transcript.\nSecond line.",
+    })
+    episode_id = response.json()["id"]
+    def texts():
+        return [chunk["transcript"]["text"] for chunk in client.get(f"/podcasts/{episode_id}/chunks").json()]
+    assert texts() == ["A plain transcript.\nSecond line.", "", ""]
+    update = {"title": "After", "author": "Author", "external_transcript": "[00:05] First\n[00:40] Third"}
+    assert client.patch(f"/podcasts/{episode_id}", json=update).status_code == 200
+    assert texts() == ["First", "", "Third"]
+    assert client.patch(f"/podcasts/{episode_id}", json={"title": "Changed", "author": "Author"}).status_code == 200
+    assert texts() == ["First", "", "Third"]
+    for invalid in ("", "[00:10] Text\nno timestamp", "[01:00] Outside", "[00:70] Invalid"):
+        assert client.patch(f"/podcasts/{episode_id}", json={**update, "external_transcript": invalid}).status_code == 422
+        assert texts() == ["First", "", "Third"]
+        assert client.get(f"/podcasts/{episode_id}").json()["title"] == "Changed"
+    assert client.patch("/podcasts/999999", json=update).status_code == 404

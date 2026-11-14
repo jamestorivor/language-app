@@ -7,6 +7,8 @@ import type {
 } from "../contracts/podcast";
 import { deleteEpisode, getEpisodeById, getSegments, updateEpisode } from "../api/podcast";
 import { formatTime } from "../utils/formatTime";
+import TranscriptFileInput from "./TranscriptFileInput";
+import { readTranscriptFile } from "../utils/transcriptFile";
 
 // export const sampleApiSegments: ListSegmentResponse = [
 //   {
@@ -68,10 +70,12 @@ export default function PodcastSegments() {
     setSaving(true);
     setEditError("");
     try {
-      setEpisode(await updateEpisode(id, { title, author, language }));
+      const external_transcript = await readTranscriptFile(form.get("transcript"));
+      setEpisode(await updateEpisode(id, { title, author, language, external_transcript }));
+      if (external_transcript !== undefined) setSegements(await getSegments(id));
       setEditing(false);
-    } catch {
-      setEditError("Could not save changes. Please try again.");
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : "Could not save changes. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -142,6 +146,7 @@ export default function PodcastSegments() {
                 </select>
                 <p className="mt-2 text-sm text-stone-500">Changing the language changes how existing transcripts are read; it does not replace their text.</p>
               </div>
+              <TranscriptFileInput id="edit-transcript" />
               {editError && <p role="alert" className="text-sm text-red-700">{editError}</p>}
               <div className="flex flex-wrap gap-3">
                 <button type="submit" disabled={saving || deleting} className="rounded-lg bg-emerald-900 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">{saving ? "Saving…" : "Save changes"}</button>

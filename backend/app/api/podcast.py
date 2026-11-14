@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.services.podcast.youtube_connect import get_transcript
 from app.services.podcast.duration import get_episode_duration
+from app.services.podcast.external_transcript import parse_external_transcript
 from app.data_access import podcast as data
 from app.db.session import get_db
 from app.config import DEVELOPMENT_USER_ID
@@ -17,16 +18,20 @@ def create_episode(request: PodcastEpisodeCreate, db: Session = Depends(get_db))
     if existing is not None:
         if existing.language != request.language:
             raise HTTPException(status_code=409, detail="This podcast is already in your library with a different language. Edit its details to change the language.")
+        if request.external_transcript is not None:
+            raise HTTPException(status_code=409, detail="This podcast is already in your library. Edit it to add or replace its transcript.")
         return existing
     duration = get_episode_duration(request.podcast_details)
     if request.chunk_interval < duration / 10000:
         raise HTTPException(status_code=422, detail="An episode can have at most 10000 generated chunks")
     transcript = (
-        get_transcript(request.podcast_details.id, request.language)
+        parse_external_transcript(request.external_transcript, duration)
+        if request.external_transcript is not None
+        else get_transcript(request.podcast_details.id, request.language)
         if request.podcast_details.provider == "youtube"
         else None
     )
-    episode = data.add_episode(db, DEVELOPMENT_USER_ID, duration=duration, transcript=transcript, **request.model_dump(exclude={"podcast_details"}))
+    episode = data.add_episode(db, DEVELOPMENT_USER_ID, duration=duration, transcript=transcript, **request.model_dump(exclude={"podcast_details", "external_transcript"}))
     if episode.language != request.language:
         raise HTTPException(status_code=409, detail="This podcast is already in your library with a different language. Edit its details to change the language.")
     return episode
@@ -58,6 +63,9 @@ def update_episode(episode_id: int, request: PodcastEpisodeUpdate, db: Session =
     episode = data.get_episode(db, DEVELOPMENT_USER_ID, episode_id)
     if episode is None:
         raise HTTPException(status_code=404, detail="Episode not found")
+    if request.external_transcript is not None:
+        transcript = parse_external_transcript(request.external_transcript, episode.duration)
+        data.replace_episode_transcript(db, DEVELOPMENT_USER_ID, episode_id, transcript)
     episode.title = request.title
     episode.author = request.author
     if request.language is not None:

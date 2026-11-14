@@ -4,6 +4,8 @@ import { createEpisode } from "../api/podcast";
 import { useNavigate, useSearchParams } from "react-router";
 import parsePodcastLink from "../utils/urlParser";
 import type { PodcastLink } from "../utils/urlParser";
+import TranscriptFileInput from "./TranscriptFileInput";
+import { readTranscriptFile } from "../utils/transcriptFile";
 function AddPodcastCard() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -43,6 +45,7 @@ function AddPodcastCard() {
     isAddingRef.current = true;
     setIsAdding(true);
     try {
+      episodeRequest.external_transcript = await readTranscriptFile(form.get("transcript"));
       const episode = await createEpisode(episodeRequest);
       const episodeId = episode.id;
 
@@ -89,24 +92,10 @@ function AddPodcastCard() {
               type="url"
               required
               placeholder="https://..."
-              aria-describedby={
-                errorMessage
-                  ? "podcast-url-error podcast-url-help"
-                  : "podcast-url-help"
-              }
-              aria-invalid={Boolean(errorMessage)}
+              aria-describedby="podcast-url-help"
               onChange={() => setErrorMessage("")}
               className="mt-2 block w-full rounded-lg border border-stone-300 px-3 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-200"
             />
-            {errorMessage && (
-              <p
-                id="podcast-url-error"
-                role="alert"
-                className="mt-2 text-sm text-red-600"
-              >
-                {errorMessage}
-              </p>
-            )}
             <p id="podcast-url-help" className="mt-2 text-sm text-stone-500">
               Enter a podcast or episode link.
             </p>
@@ -170,6 +159,9 @@ function AddPodcastCard() {
               Choose the length of each segment in minutes.
             </p>
           </div>
+
+          <TranscriptFileInput id="add-transcript" />
+          {errorMessage && <p role="alert" className="text-sm text-red-600">{errorMessage}</p>}
 
           <div>
             <button

@@ -49,13 +49,17 @@ async function getEpisodeById(episode_id: number): Promise<EpisodeResponse> {
   });
 }
 
-async function updateEpisode(episodeId: number, details: { title: string; author: string; language: PodcastLanguage }): Promise<EpisodeResponse> {
+async function updateEpisode(episodeId: number, details: { title: string; author: string; language: PodcastLanguage; external_transcript?: string }): Promise<EpisodeResponse> {
   const response = await loggedFetch("podcast.update", new URL(`${API_PREFIX}/${episodeId}`, API_BASE_URL), {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(details),
   });
-  if (!response.ok) throw new Error(`Could not save changes (response ${response.status}).`);
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => null);
+    const detail = body && typeof body === "object" && "detail" in body ? body.detail : null;
+    throw new Error(typeof detail === "string" ? detail : `Could not save changes (response ${response.status}).`);
+  }
   return response.json();
 }
 

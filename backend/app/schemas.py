@@ -296,12 +296,14 @@ class PodcastEpisodeCreate(BaseModel):
     chunk_interval: float = Field(gt=0, allow_inf_nan=False, description="Chunk duration in seconds")
     podcast_details: PodcastLink
     language: Literal["ja", "en"] = "ja"
+    external_transcript: str | None = Field(default=None, max_length=1_000_000)
 
 
 class PodcastEpisodeUpdate(BaseModel):
     title: str = Field(min_length=1)
     author: str = Field(min_length=1)
     language: Literal["ja", "en"] | None = None
+    external_transcript: str | None = Field(default=None, max_length=1_000_000)
 
     @model_validator(mode="after")
     def strip_fields(self):
