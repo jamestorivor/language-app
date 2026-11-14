@@ -27,13 +27,13 @@ def create_episode(request: PodcastEpisodeCreate, db: Session = Depends(get_db))
     if request.chunk_interval < duration / 10000:
         raise HTTPException(status_code=422, detail="An episode can have at most 10000 generated chunks")
     transcript = (
-        parse_external_transcript(request.external_transcript, duration)
+        parse_external_transcript(request.external_transcript, duration, file_format=request.external_transcript_format)
         if request.external_transcript is not None
         else get_transcript(request.podcast_details.id, request.language)
         if request.podcast_details.provider == "youtube"
         else None
     )
-    episode = data.add_episode(db, DEVELOPMENT_USER_ID, duration=duration, transcript=transcript, **request.model_dump(exclude={"podcast_details", "external_transcript"}))
+    episode = data.add_episode(db, DEVELOPMENT_USER_ID, duration=duration, transcript=transcript, **request.model_dump(exclude={"podcast_details", "external_transcript", "external_transcript_format"}))
     if episode.language != request.language:
         raise HTTPException(status_code=409, detail="This podcast is already in your library with a different language. Edit its details to change the language.")
     return episode
@@ -72,7 +72,7 @@ def update_episode(episode_id: int, request: PodcastEpisodeUpdate, db: Session =
             raise HTTPException(status_code=422, detail="An episode can have at most 10000 generated chunks")
         chunks = data.list_chunks(db, DEVELOPMENT_USER_ID, episode_id)
         if request.external_transcript is not None:
-            transcript = parse_external_transcript(request.external_transcript, episode.duration, require_timestamps=True)
+            transcript = parse_external_transcript(request.external_transcript, episode.duration, require_timestamps=True, file_format=request.external_transcript_format)
         elif request.refresh_youtube_transcript:
             url = urlparse(episode.audio_location)
             if url.scheme == "https" and url.hostname in {"youtube.com", "www.youtube.com", "m.youtube.com"} and url.path == "/watch":
@@ -90,7 +90,7 @@ def update_episode(episode_id: int, request: PodcastEpisodeUpdate, db: Session =
             transcript = [] if any(chunk.transcript is not None for chunk in chunks) else None
         data.rebuild_chunks(db, episode, request.chunk_interval, transcript)
     elif request.external_transcript is not None:
-        transcript = parse_external_transcript(request.external_transcript, episode.duration)
+        transcript = parse_external_transcript(request.external_transcript, episode.duration, file_format=request.external_transcript_format)
         data.replace_episode_transcript(db, DEVELOPMENT_USER_ID, episode_id, transcript)
     episode.title = request.title
     episode.author = request.author

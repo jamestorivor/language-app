@@ -297,6 +297,7 @@ class PodcastEpisodeCreate(BaseModel):
     podcast_details: PodcastLink
     language: Literal["ja", "en"] = "ja"
     external_transcript: str | None = Field(default=None, max_length=1_000_000)
+    external_transcript_format: Literal["txt", "srt", "vtt"] = "txt"
 
 
 class PodcastEpisodeUpdate(BaseModel):
@@ -304,6 +305,7 @@ class PodcastEpisodeUpdate(BaseModel):
     author: str = Field(min_length=1)
     language: Literal["ja", "en"] | None = None
     external_transcript: str | None = Field(default=None, max_length=1_000_000)
+    external_transcript_format: Literal["txt", "srt", "vtt"] = "txt"
     chunk_interval: float | None = Field(default=None, gt=0, allow_inf_nan=False)
     refresh_youtube_transcript: bool = False
 

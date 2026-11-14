@@ -45,7 +45,9 @@ function AddPodcastCard() {
     isAddingRef.current = true;
     setIsAdding(true);
     try {
-      episodeRequest.external_transcript = await readTranscriptFile(form.get("transcript"));
+      const transcript = await readTranscriptFile(form.get("transcript"));
+      episodeRequest.external_transcript = transcript?.text;
+      episodeRequest.external_transcript_format = transcript?.format;
       const episode = await createEpisode(episodeRequest);
       const episodeId = episode.id;
 

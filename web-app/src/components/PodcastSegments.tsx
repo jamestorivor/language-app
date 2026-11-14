@@ -77,9 +77,11 @@ export default function PodcastSegments() {
     setSaving(true);
     setEditError("");
     try {
-      const external_transcript = await readTranscriptFile(form.get("transcript"));
+      const transcript = await readTranscriptFile(form.get("transcript"));
+      const external_transcript = transcript?.text;
+      const external_transcript_format = transcript?.format;
       const refresh_youtube_transcript = form.get("refreshYoutubeTranscript") === "on";
-      setEpisode(await updateEpisode(id, { title, author, language, external_transcript, chunk_interval, refresh_youtube_transcript }));
+      setEpisode(await updateEpisode(id, { title, author, language, external_transcript, external_transcript_format, chunk_interval, refresh_youtube_transcript }));
       if (external_transcript !== undefined || chunk_interval !== undefined) setSegements(await getSegments(id));
       setEditing(false);
     } catch (error) {

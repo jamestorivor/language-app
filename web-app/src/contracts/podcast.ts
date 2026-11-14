@@ -1,4 +1,5 @@
 import type { PodcastLink } from "../utils/urlParser";
+import type { TranscriptFileFormat } from "../utils/transcriptFile";
 
 export type PodcastLanguage = "ja" | "en";
 
@@ -11,11 +12,12 @@ export type CreateEpisodeRequest = {
   podcast_details: PodcastLink;
   language: PodcastLanguage;
   external_transcript?: string;
+  external_transcript_format?: TranscriptFileFormat;
 };
 
 export type EpisodeResponse = Omit<
   CreateEpisodeRequest,
-  "chunk_interval" | "podcast_details" | "external_transcript"
+  "chunk_interval" | "podcast_details" | "external_transcript" | "external_transcript_format"
 > & {
   id: number;
   user_id: number;

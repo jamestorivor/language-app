@@ -384,3 +384,56 @@ def test_external_transcript_edit_is_atomic_and_optional(client):
         assert texts() == ["First", "", "Third"]
         assert client.get(f"/podcasts/{episode_id}").json()["title"] == "Changed"
     assert client.patch("/podcasts/999999", json=update).status_code == 404
+
+
+@pytest.mark.parametrize(('file_format', 'contents'), [
+    ('srt', '1\n00:00:00,000 --> 00:00:03,000\n<i>First</i> line\ncontinued\n\n2\n00:00:20,000 --> 00:00:22,000\nSecond &amp; next\n\n3\n00:00:40,000 --> 00:00:42,000\nFinal'),
+    ('vtt', 'WEBVTT\n\nNOTE Example comment\nignored\n\nfirst-cue\n00:00.000 --> 00:03.000 align:start\n<i>First</i> line\ncontinued\n\n00:20.000 --> 00:22.000\nSecond &amp; next\n\n00:40.000 --> 00:42.000\nFinal'),
+])
+def test_subtitles_are_assigned_to_segments_on_create_edit_and_resize(client, file_format, contents):
+    response = client.post('/podcasts', json={
+        'audio_location': f'audio-{file_format}', 'title': 'Episode', 'author': 'Author',
+        'chunk_interval': 20, 'podcast_details': {'provider': 'spotify', 'id': 'test'},
+        'external_transcript': contents, 'external_transcript_format': file_format,
+    })
+    assert response.status_code == 200
+    episode_id = response.json()['id']
+
+    def texts():
+        chunks = client.get(f'/podcasts/{episode_id}/chunks').json()
+        return [(chunk['start_time'], chunk['end_time'], chunk['transcript']['text']) for chunk in chunks]
+
+    assert texts() == [(0, 20, 'First line\ncontinued'), (20, 40, 'Second & next'), (40, 60, 'Final')]
+    update = {'title': 'Episode', 'author': 'Author', 'external_transcript': contents,
+              'external_transcript_format': file_format}
+    assert client.patch(f'/podcasts/{episode_id}', json=update).status_code == 200
+    assert texts() == [(0, 20, 'First line\ncontinued'), (20, 40, 'Second & next'), (40, 60, 'Final')]
+    update['chunk_interval'] = 30
+    assert client.patch(f'/podcasts/{episode_id}', json=update).status_code == 200
+    assert texts() == [(0, 30, 'First line\ncontinued Second & next'), (30, 60, 'Final')]
+    assert client.patch(f'/podcasts/{episode_id}', json={**update, 'chunk_interval': 15}).status_code == 200
+    assert texts() == [(0, 15, 'First line\ncontinued'), (15, 30, 'Second & next'), (30, 45, 'Final'), (45, 60, '')]
+
+
+@pytest.mark.parametrize(('file_format', 'contents'), [
+    ('vtt', 'Not WEBVTT\n\n00:00.000 --> 00:01.000\nText'),
+    ('vtt', 'WEBVTT\n\n00:00.000 --> 00:00.000\nText'),
+    ('srt', '1\n00:00:00,000 --> bad\nText'),
+    ('srt', '1\n00:00:60,000 --> 00:01:01,000\nText'),
+    ('srt', '1\n00:00:00,000 --> 00:00:01,000\n<i></i>'),
+])
+def test_invalid_subtitle_upload_does_not_change_episode(client, file_format, contents):
+    response = client.post('/podcasts', json={
+        'audio_location': 'subtitle-edit', 'title': 'Original', 'author': 'Author',
+        'chunk_interval': 20, 'podcast_details': {'provider': 'spotify', 'id': 'test'},
+        'external_transcript': '[00:00] Original',
+    })
+    episode_id = response.json()['id']
+    chunks = client.get(f'/podcasts/{episode_id}/chunks').json()
+    result = client.patch(f'/podcasts/{episode_id}', json={
+        'title': 'Changed', 'author': 'Author', 'chunk_interval': 30,
+        'external_transcript': contents, 'external_transcript_format': file_format,
+    })
+    assert result.status_code == 422
+    assert client.get(f'/podcasts/{episode_id}').json()['title'] == 'Original'
+    assert client.get(f'/podcasts/{episode_id}/chunks').json() == chunks
