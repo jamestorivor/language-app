@@ -304,6 +304,8 @@ class PodcastEpisodeUpdate(BaseModel):
     author: str = Field(min_length=1)
     language: Literal["ja", "en"] | None = None
     external_transcript: str | None = Field(default=None, max_length=1_000_000)
+    chunk_interval: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    refresh_youtube_transcript: bool = False
 
     @model_validator(mode="after")
     def strip_fields(self):

@@ -33,11 +33,9 @@ function SegmentDetail({ segmentId }: { segmentId: string | undefined }) {
         if (!cancelled) setLoadError("Could not load this segment.");
       }
     }
-    if (!segment) {
-      void loadSegment(id);
-    }
+    void loadSegment(id);
     return () => { cancelled = true; };
-  }, [id, segment]);
+  }, [id]);
 
   if (loadError) return <p role="alert">{loadError}</p>;
   if (!segment) return <>Loading...</>;

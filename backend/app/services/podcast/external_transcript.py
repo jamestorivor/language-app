@@ -7,12 +7,14 @@ from fastapi import HTTPException
 _TIMESTAMP = re.compile(r"^\s*(?:\[(\d+:\d{2}(?::\d{2})?(?:\.\d+)?)\]|(\d+:\d{2}(?::\d{2})?(?:\.\d+)?))\s+(.+?)\s*$")
 
 
-def parse_external_transcript(text: str, duration: float) -> list[dict]:
+def parse_external_transcript(text: str, duration: float, *, require_timestamps: bool = False) -> list[dict]:
     text = text.lstrip("\ufeff").strip()
     if not text:
         raise HTTPException(status_code=422, detail="The transcript file is empty.")
     lines = [line for line in text.splitlines() if line.strip()]
     if not _TIMESTAMP.match(lines[0]):
+        if require_timestamps:
+            raise HTTPException(status_code=422, detail="Each transcript line needs a timestamp to update segment times.")
         return [{"start": 0, "text": text}]
 
     snippets = []

@@ -49,7 +49,7 @@ async function getEpisodeById(episode_id: number): Promise<EpisodeResponse> {
   });
 }
 
-async function updateEpisode(episodeId: number, details: { title: string; author: string; language: PodcastLanguage; external_transcript?: string }): Promise<EpisodeResponse> {
+async function updateEpisode(episodeId: number, details: { title: string; author: string; language: PodcastLanguage; external_transcript?: string; chunk_interval?: number; refresh_youtube_transcript?: boolean }): Promise<EpisodeResponse> {
   const response = await loggedFetch("podcast.update", new URL(`${API_PREFIX}/${episodeId}`, API_BASE_URL), {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },

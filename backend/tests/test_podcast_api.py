@@ -64,6 +64,83 @@ def test_episode_and_chunk_lifecycle(client):
     assert len(client.get(f'/podcasts/{episode_id}/chunks').json()) == 3
 
 
+def test_update_segment_length_rebuilds_transcripts_and_details(client):
+    episode_id = client.post('/podcasts', json={
+        'audio_location': 'audio', 'title': 'Before', 'author': 'Author',
+        'chunk_interval': 20, 'podcast_details': {'provider': 'spotify', 'id': 'episode'},
+        'external_transcript': '[00:05] First\n[00:25] Second\n[00:45] Third',
+    }).json()['id']
+    update = {'title': 'After', 'author': 'Author', 'chunk_interval': 30,
+              'external_transcript': '[00:05] First\n[00:25] Second\n[00:45] Third'}
+    assert client.patch(f'/podcasts/{episode_id}', json=update).status_code == 200
+    chunks = client.get(f'/podcasts/{episode_id}/chunks').json()
+    assert [(c['start_time'], c['end_time'], c['transcript']['text']) for c in chunks] == [
+        (0, 30, 'First Second'), (30, 60, 'Third')]
+    assert all(c['episode_title'] == 'After' for c in chunks)
+
+
+def test_segment_rebuild_rejects_missing_or_invalid_transcript_without_changes(client):
+    episode_id = client.post('/podcasts', json={
+        'audio_location': 'audio', 'title': 'Before', 'author': 'Author',
+        'chunk_interval': 20, 'podcast_details': {'provider': 'spotify', 'id': 'episode'},
+        'external_transcript': '[00:05] Existing',
+    }).json()['id']
+    original = client.get(f'/podcasts/{episode_id}/chunks').json()
+    for extra in ({}, {'external_transcript': 'Untimed text'},
+                  {'external_transcript': '[01:00] Outside'}, {'chunk_interval': 0},
+                  {'chunk_interval': 0.001}):
+        response = client.patch(f'/podcasts/{episode_id}', json={
+            'title': 'After', 'author': 'Author', 'chunk_interval': 30, **extra})
+        assert response.status_code == 422
+        assert client.get(f'/podcasts/{episode_id}/chunks').json() == original
+        assert client.get(f'/podcasts/{episode_id}').json()['title'] == 'Before'
+
+
+def test_rebuild_uses_requested_youtube_captions_and_preserves_on_failure(client, monkeypatch):
+    from fastapi import HTTPException
+
+    episode_id = client.post('/podcasts', json={
+        'audio_location': 'https://youtu.be/abcdefghijk', 'title': 'Before', 'author': 'Author',
+        'chunk_interval': 20, 'podcast_details': {'provider': 'youtube', 'id': 'abcdefghijk'},
+        'external_transcript': '[00:05] Uploaded',
+    }).json()['id']
+    update = {'title': 'After', 'author': 'Author', 'language': 'en', 'chunk_interval': 30,
+              'refresh_youtube_transcript': True}
+    original = client.get(f'/podcasts/{episode_id}/chunks').json()
+    def fail(*args):
+        raise HTTPException(status_code=503, detail='Unavailable')
+    monkeypatch.setattr('app.api.podcast.get_transcript', fail)
+    assert client.patch(f'/podcasts/{episode_id}', json=update).status_code == 503
+    assert client.get(f'/podcasts/{episode_id}/chunks').json() == original
+    assert client.get(f'/podcasts/{episode_id}').json()['title'] == 'Before'
+    calls = []
+    monkeypatch.setattr('app.api.podcast.get_transcript', lambda video, language: calls.append((video, language)) or [
+        {'start': 5, 'text': 'First'}, {'start': 31, 'text': 'Second'}])
+    assert client.patch(f'/podcasts/{episode_id}', json=update).status_code == 200
+    assert calls == [('abcdefghijk', 'en')]
+    assert [chunk['transcript']['text'] for chunk in client.get(f'/podcasts/{episode_id}/chunks').json()] == ['First', 'Second']
+
+
+def test_rebuild_without_transcript_and_other_user_access(client):
+    episode_id = client.post('/podcasts', json={
+        'audio_location': 'audio', 'title': 'Episode', 'author': 'Author',
+        'chunk_interval': 20, 'podcast_details': {'provider': 'spotify', 'id': 'episode'},
+    }).json()['id']
+    response = client.patch(f'/podcasts/{episode_id}', json={
+        'title': 'Episode', 'author': 'Author', 'chunk_interval': 25})
+    assert response.status_code == 200
+    chunks = client.get(f'/podcasts/{episode_id}/chunks').json()
+    assert [(c['start_time'], c['end_time'], c['transcript']) for c in chunks] == [
+        (0, 25, None), (25, 50, None), (50, 60, None)]
+    with next(iter(app.dependency_overrides[get_db]())) as session:
+        other = PodcastEpisode(user_id=2, audio_location='other', title='Other', author='Author', duration=60)
+        session.add(other)
+        session.commit()
+        other_id = other.id
+    assert client.patch(f'/podcasts/{other_id}', json={
+        'title': 'Changed', 'author': 'Author', 'chunk_interval': 30}).status_code == 404
+
+
 def test_delete_episode_removes_segments_and_transcripts(client):
     payload = {
         'audio_location': 'delete-audio', 'title': 'Episode', 'author': 'Author',

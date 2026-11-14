@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
+from urllib.parse import parse_qs, urlparse
+import re
 
 from app.services.podcast.youtube_connect import get_transcript
 from app.services.podcast.duration import get_episode_duration
@@ -63,7 +65,31 @@ def update_episode(episode_id: int, request: PodcastEpisodeUpdate, db: Session =
     episode = data.get_episode(db, DEVELOPMENT_USER_ID, episode_id)
     if episode is None:
         raise HTTPException(status_code=404, detail="Episode not found")
-    if request.external_transcript is not None:
+    if request.refresh_youtube_transcript and (request.chunk_interval is None or request.external_transcript is not None):
+        raise HTTPException(status_code=422, detail="Choose one transcript source when updating segment times.")
+    if request.chunk_interval is not None:
+        if request.chunk_interval < episode.duration / 10000:
+            raise HTTPException(status_code=422, detail="An episode can have at most 10000 generated chunks")
+        chunks = data.list_chunks(db, DEVELOPMENT_USER_ID, episode_id)
+        if request.external_transcript is not None:
+            transcript = parse_external_transcript(request.external_transcript, episode.duration, require_timestamps=True)
+        elif request.refresh_youtube_transcript:
+            url = urlparse(episode.audio_location)
+            if url.scheme == "https" and url.hostname in {"youtube.com", "www.youtube.com", "m.youtube.com"} and url.path == "/watch":
+                video_id = parse_qs(url.query).get("v", [""])[0]
+            elif url.scheme == "https" and url.hostname == "youtu.be":
+                video_id = url.path.lstrip("/")
+            else:
+                video_id = ""
+            if not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id):
+                raise HTTPException(status_code=422, detail="YouTube captions are unavailable for this podcast link.")
+            transcript = get_transcript(video_id, request.language or episode.language)
+        elif any(chunk.transcript and chunk.transcript.text.strip() for chunk in chunks):
+            raise HTTPException(status_code=422, detail="Upload a timestamped transcript or choose YouTube captions to update segment times.")
+        else:
+            transcript = [] if any(chunk.transcript is not None for chunk in chunks) else None
+        data.rebuild_chunks(db, episode, request.chunk_interval, transcript)
+    elif request.external_transcript is not None:
         transcript = parse_external_transcript(request.external_transcript, episode.duration)
         data.replace_episode_transcript(db, DEVELOPMENT_USER_ID, episode_id, transcript)
     episode.title = request.title

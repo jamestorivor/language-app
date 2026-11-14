@@ -72,6 +72,13 @@ sense disambiguation are not currently resolved. Reload an extension page to
 change the selected language. English scores are independent of Japanese
 scores and, like the existing feature, currently use the fixed development user.
 
+To change a podcast's segment length, open its segments page and select **Edit
+podcast details**. Enter a new length in minutes and save. The app rebuilds all
+segments; existing segment links may change. If the podcast has transcript text,
+upload a timestamped UTF-8 `.txt` transcript (one timestamped line per entry),
+or select current YouTube captions for a YouTube episode. Existing segment
+transcript text does not retain the timestamps needed to redistribute it.
+
 The backend's Vercel build runs `scripts/strip_debug_symbols.py` after installing
 dependencies. This removes debug symbols from the Linux NLP libraries while
 keeping both parser models and dictionaries intact, and updates the package

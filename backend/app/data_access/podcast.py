@@ -99,6 +99,27 @@ def replace_episode_transcript(session: Session, user_id: int, episode_id: int, 
             chunk.transcript.text = " ".join(texts)
 
 
+def rebuild_chunks(session: Session, episode: PodcastEpisode, interval: float, snippets: list[dict] | None):
+    chunks = list_chunks(session, episode.user_id, episode.id)
+    count = ceil(episode.duration / interval)
+    texts: list[list[str]] = [[] for _ in range(count)]
+    if snippets is not None:
+        for snippet in snippets:
+            start = snippet["start"]
+            if 0 <= start < episode.duration:
+                texts[int(start // interval)].append(snippet["text"])
+    for chunk in chunks:
+        session.delete(chunk)
+    # Delete first so no old transcript or segment survives the replacement.
+    session.flush()
+    for index in range(count):
+        chunk = PodcastChunk(user_id=episode.user_id, podcast_id=episode.id,
+                             start_time=index * interval, end_time=min((index + 1) * interval, episode.duration))
+        if snippets is not None:
+            chunk.transcript = PodcastTranscript(text=" ".join(texts[index]))
+        session.add(chunk)
+
+
 def save_transcript(session: Session, chunk: PodcastChunk, text: str):
     if chunk.transcript is None:
         chunk.transcript = PodcastTranscript(text=text)

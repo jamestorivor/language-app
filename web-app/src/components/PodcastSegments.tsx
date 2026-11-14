@@ -9,6 +9,7 @@ import { deleteEpisode, getEpisodeById, getSegments, updateEpisode } from "../ap
 import { formatTime } from "../utils/formatTime";
 import TranscriptFileInput from "./TranscriptFileInput";
 import { readTranscriptFile } from "../utils/transcriptFile";
+import parsePodcastLink from "../utils/urlParser";
 
 // export const sampleApiSegments: ListSegmentResponse = [
 //   {
@@ -63,16 +64,23 @@ export default function PodcastSegments() {
     const title = String(form.get("title") ?? "").trim();
     const author = String(form.get("author") ?? "").trim();
     const language: PodcastLanguage = form.get("language") === "en" ? "en" : "ja";
+    const segmentSize = String(form.get("segmentSizeMinutes") ?? "").trim();
+    const chunk_interval = segmentSize ? Number(segmentSize) * 60 : undefined;
     if (!title || !author) {
       setEditError("Please enter a title and author.");
+      return;
+    }
+    if (chunk_interval !== undefined && (!Number.isFinite(chunk_interval) || chunk_interval <= 0)) {
+      setEditError("Enter a segment length greater than zero.");
       return;
     }
     setSaving(true);
     setEditError("");
     try {
       const external_transcript = await readTranscriptFile(form.get("transcript"));
-      setEpisode(await updateEpisode(id, { title, author, language, external_transcript }));
-      if (external_transcript !== undefined) setSegements(await getSegments(id));
+      const refresh_youtube_transcript = form.get("refreshYoutubeTranscript") === "on";
+      setEpisode(await updateEpisode(id, { title, author, language, external_transcript, chunk_interval, refresh_youtube_transcript }));
+      if (external_transcript !== undefined || chunk_interval !== undefined) setSegements(await getSegments(id));
       setEditing(false);
     } catch (error) {
       setEditError(error instanceof Error ? error.message : "Could not save changes. Please try again.");
@@ -146,7 +154,18 @@ export default function PodcastSegments() {
                 </select>
                 <p className="mt-2 text-sm text-stone-500">Changing the language changes how existing transcripts are read; it does not replace their text.</p>
               </div>
+              <div>
+                <label htmlFor="edit-segment-size" className="block text-sm font-semibold text-stone-700">New segment length (minutes)</label>
+                <input id="edit-segment-size" name="segmentSizeMinutes" type="number" min="0.01" step="any" placeholder="Leave blank to keep current segments" aria-describedby="edit-segment-size-help" className="mt-2 w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:outline-2 focus:outline-emerald-800" />
+                <p id="edit-segment-size-help" className="mt-2 text-sm text-stone-500">Changing the length rebuilds every segment and replaces its transcript. Upload a timestamped transcript below{parsePodcastLink(episode.audio_location)?.provider === "youtube" ? " or use YouTube captions" : ""}. Existing segment links may change or stop working.</p>
+              </div>
               <TranscriptFileInput id="edit-transcript" />
+              {parsePodcastLink(episode.audio_location)?.provider === "youtube" && (
+                <label className="flex items-start gap-2 text-sm text-stone-700">
+                  <input type="checkbox" name="refreshYoutubeTranscript" className="mt-1" />
+                  <span>Use current YouTube captions when changing segment length (replaces existing transcripts).</span>
+                </label>
+              )}
               {editError && <p role="alert" className="text-sm text-red-700">{editError}</p>}
               <div className="flex flex-wrap gap-3">
                 <button type="submit" disabled={saving || deleting} className="rounded-lg bg-emerald-900 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">{saving ? "Saving…" : "Save changes"}</button>
