@@ -17,7 +17,7 @@ app.include_router(vocabulary_levels.router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Use your actual frontend URL
+    allow_origins=["http://localhost:5173", "https://language-app-jamestorivors-projects.vercel.app"],  # Use your actual frontend URL
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["X-Request-ID"],

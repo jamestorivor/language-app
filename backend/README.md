@@ -49,6 +49,8 @@ Using POS and commonness to rank.
 Set `YOUTUBE_API_KEY` for YouTube videos and `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` for Spotify episodes in the backend environment. `SPOTIFY_MARKET` optionally selects the Spotify market (defaults to `SG`). Episode creation reads duration from provider metadata; it does not download media.
 
 Podcast vocabulary estimates require the latest database migration (`alembic upgrade head`).
+The same migration step is required before saving words as “Won’t learn” on an
+existing database; without it, the database rejects the new status.
 Ratings are captured when an episode's transcript is added. Existing episodes get a dated
 baseline the first time their vocabulary is viewed. Replacing a transcript, changing its
 language, or rebuilding segments starts a new baseline. Estimates use matched transcript
