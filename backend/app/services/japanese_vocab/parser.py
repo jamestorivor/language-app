@@ -3,7 +3,7 @@ from app.schemas import JapaneseTokenizedResponse
 import unicodedata
 
 jap_dict = Dictionary(dict="full")
-SPLIT_MODE = SplitMode.A
+SPLIT_MODE = SplitMode.C
 
 def parse_japanese_text(text: str) -> list[dict]:
     list_of_tokens = []

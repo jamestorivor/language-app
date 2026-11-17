@@ -47,7 +47,7 @@ function RatingScale({ value, onChange }: RatingScaleProps) {
       </label>
       <details className="rating-scale-help">
         <summary>Rating meanings</summary>
-        <p><strong>0 — Unseen:</strong> The word hasn’t been recorded or rated yet.</p>
+        <p><strong>0 — Unrated:</strong> You haven’t rated the word yet.</p>
         <p><strong>Won’t learn:</strong> You don’t plan to learn this word.</p>
         {ratings.map(({ score, label, description }) => (
           <p key={score}><strong>{score} — {label}:</strong> {description}</p>

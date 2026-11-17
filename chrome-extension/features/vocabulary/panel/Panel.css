@@ -10,7 +10,7 @@
   flex-direction: column;
   width: 260px;
   max-width: calc(100vw - 24px);
-  max-height: min(280px, calc(100dvh - 24px));
+  max-height: min(440px, calc(100dvh - 24px));
   overflow: hidden;
   border: 1px solid #d8d8d8;
   border-radius: 8px;
@@ -119,6 +119,15 @@
   padding: 9px 14px;
   border-top: 1px solid var(--panel-line);
 }
+
+.panel .panel-save-status,
+.panel .panel-save-error {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.panel-save-status { color: var(--panel-muted); }
+.panel-save-error { color: #a32d2d; }
 
 @media (max-height: 240px) {
   .panel {

@@ -109,12 +109,12 @@ def test_missing_dictionary_form_uses_surface(spoken_dictionary):
     assert get_word_details_batch(spoken_dictionary, [token], 1)[0] == result
 
 
-def test_priority_tags_rank_and_keep_other_matching_entries(spoken_dictionary):
+def test_priority_tags_rank_without_mixing_other_entries(spoken_dictionary):
     token = groups("はい、分かりました。")[0]
     result = get_word_details(spoken_dictionary, token, 1)
     # The lower-id entry is less frequent; ordering must come from nf tags.
     assert result.word_id == 11
-    assert [sense["glosses"][0] for sense in result.senses] == ["yes", "hello"]
+    assert [sense["glosses"][0] for sense in result.senses] == ["yes"]
     assert get_word_details_batch(spoken_dictionary, [token], 1)[0] == result
 
 

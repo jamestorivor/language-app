@@ -10,7 +10,7 @@
   flex-direction: column;
   width: 260px;
   max-width: calc(100vw - 24px);
-  max-height: min(280px, calc(100dvh - 24px));
+  max-height: min(440px, calc(100dvh - 24px));
   overflow: hidden;
   border: 1px solid #d8d8d8;
   border-radius: 8px;

@@ -52,7 +52,7 @@ export default function VocabularyApp() {
         },
       };
     });
-    updateSpanCssFamiliarity(wordId, newScore);
+    updateSpanCssFamiliarity(wordId, result.response.new_score);
   }
 
   useEffect(() => {

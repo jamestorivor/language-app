@@ -14,7 +14,7 @@ it("positions the panel above the selection when it exceeds the viewport bottom"
     left: 100,
   } as DOMRect;
 
-  const result = getPanelPosition(rect, windowData, panelData);
+  const result = getPanelPosition(rect, windowData.height, windowData.width, panelData.height, panelData.width);
 
   expect(result).toEqual({
     x: 100,
@@ -29,7 +29,7 @@ it("positions the panel below the selection if within viewport", () => {
     left: 100,
   } as DOMRect;
 
-  const result = getPanelPosition(rect, windowData, panelData);
+  const result = getPanelPosition(rect, windowData.height, windowData.width, panelData.height, panelData.width);
 
   expect(result).toEqual({
     x: 100,

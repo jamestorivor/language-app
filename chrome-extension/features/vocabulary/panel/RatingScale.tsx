@@ -4,12 +4,13 @@ import "./RatingScale.css";
 type RatingScaleProps = {
   value: number | null;
   onChange: (score: number) => void;
+  disabled?: boolean;
 };
 
-function RatingScale({ value, onChange }: RatingScaleProps) {
+function RatingScale({ value, onChange, disabled = false }: RatingScaleProps) {
   const groupName = useId();
   return (
-    <fieldset className="rating-scale" aria-label="Familiarity">
+    <fieldset className="rating-scale" aria-label="Familiarity" disabled={disabled}>
       <div className="rating-scale-options">
         {[1, 2, 3, 4, 5].map((score) => (
           <label className="rating-scale-option" key={score}>

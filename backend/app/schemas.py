@@ -76,6 +76,7 @@ class GrammarMatch(BaseModel):
 
 class GroupToken(BaseModel) :
     _followed_by_pause: bool = PrivateAttr(default=False)
+    _grammar_only: bool = PrivateAttr(default=False)
     word_id : int | None = None
     source_entry_id: int | None = None
     text : str

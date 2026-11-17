@@ -56,16 +56,21 @@ export default function WordPanel({ word, language = "ja", anchor, onClose, onCh
     .replace(/[\u30A1-\u30F6]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60));
   const score = word.familiarity_score;
   const rated = score !== null && score >= 1 && score <= 5;
+  const surfaceGrammarIds = ["negative", "negative_desire", "desire", "plural", "way_of", "easy_to", "hard_to"];
+  const surfaceGrammar = (word.grammar ?? []).filter((item) => surfaceGrammarIds.includes(item.id));
+  const otherGrammar = (word.grammar ?? []).filter((item) => !surfaceGrammarIds.includes(item.id));
   return (
     <div ref={panelRef} className="panel" role="region" aria-label="Word details"
       style={{ top: position.top, left: position.left, visibility: position.ready ? "visible" : "hidden" }}>
       <header className="panel-header">
         <div className="panel-word"><h2 className="panel-reading" lang={language}>{language === "ja" ? word.text : word.lookup_form}{language === "ja" ? ` / ${reading || word.text}` : ""}</h2></div>
-        <div className="panel-score" aria-live="polite">{score === -1 ? "Won’t learn" : rated ? `${score} / 5` : "Unseen"}</div>
+        {word.word_id !== null && <div className="panel-score" aria-live="polite">{score === -1 ? "Won’t learn" : rated ? `${score} / 5` : "Unrated"}</div>}
         <button type="button" onClick={onClose} aria-label="Close word details">×</button>
       </header>
       <section className="panel-translations" aria-label="Definitions">
+        {surfaceGrammar.map((item) => <p key={`${item.id}-${item.start_idx}`}><strong>Form:</strong> {item.meaning}</p>)}
         {word.senses?.length ? language === "ja" ? <>
+          {!!surfaceGrammar.length && <p>Dictionary form: <span lang="ja">{word.lookup_form}</span></p>}
           <p className="panel-primary-definition">{word.senses[0].glosses.join("; ")}</p>
           {word.senses.length > 1 && <details className="panel-other-meanings" key={`${word.start_idx}-${word.end_idx}-${word.word_id}`}>
             <summary>Other meanings</summary>
@@ -75,9 +80,9 @@ export default function WordPanel({ word, language = "ja", anchor, onClose, onCh
           </details>}
         </> : <ol className="panel-definition-list">{word.senses.slice(0, 3).map((sense, index) => (
           <li className="panel-definition" key={index}><span className="panel-definition-number" aria-hidden="true">{index + 1}.</span><p>{sense.glosses.join("; ")}</p></li>
-        ))}</ol> : <p className="panel-empty">No definitions available.</p>}
+        ))}</ol> : !word.grammar?.length ? <p className="panel-empty">No definitions available.</p> : null}
+        {!!otherGrammar.length && <div aria-label="Grammar"><strong>Grammar</strong><ul>{otherGrammar.map((item) => <li key={`${item.id}-${item.start_idx}`}><span lang="ja">{item.text}</span> — {item.meaning}</li>)}</ul></div>}
       </section>
-      {!!word.grammar?.length && <section className="panel-translations" aria-label="Grammar"><strong>Grammar</strong><ul>{word.grammar.map((item) => <li key={`${item.id}-${item.start_idx}`}><span lang="ja">{item.text}</span> — {item.meaning}</li>)}</ul></section>}
       {word.word_id !== null && <footer className="panel-familiarity"><fieldset disabled={saving}><RatingScale value={score} onChange={onChange} /></fieldset></footer>}
     </div>
   );

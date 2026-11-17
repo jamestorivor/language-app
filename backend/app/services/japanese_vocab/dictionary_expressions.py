@@ -29,6 +29,30 @@ def _is_expression(senses) -> bool:
     )
 
 
+def _has_pos(senses, prefixes) -> bool:
+    return any(pos.casefold().startswith(prefixes) for sense in senses for pos in (sense.get("pos") or []))
+
+
+def _is_lexical_compound(span, senses, head) -> bool:
+    """Only merge lexical spans whose shape and dictionary POS agree.
+
+    In particular, don't turn arbitrary particle-containing phrases into words.
+    """
+    if any(token.part_of_speech[0] == MajorPOS.PARTICLE for token in span):
+        return False
+    first, last = span[0], span[-1]
+    if head is not None:
+        return ((all(t.part_of_speech[0] == MajorPOS.VERB for t in span)
+                 and _has_pos(senses, ("verb", "godan verb", "ichidan verb", "v1", "v5", "vs", "vk")))
+                or (first.part_of_speech[0] == MajorPOS.VERB and last.part_of_speech[:2] == (MajorPOS.SUFFIX, "形容詞的")
+                    and _has_pos(senses, ("adjective", "adj-i"))))
+    if last.part_of_speech[0] in {MajorPOS.NOUN, MajorPOS.SUFFIX}:
+        return _has_pos(senses, ("noun", "n", "adjectival nouns", "na-adjective", "adjective", "adj-i")) and (
+            first.part_of_speech[0] in {MajorPOS.NOUN, MajorPOS.VERB, MajorPOS.ADJECTIVAL_NOUN}
+        )
+    return False
+
+
 def find_dictionary_expressions(session: Session, tokens: list[JapaneseTokenizedResponse]):
     # Keep only boundaries that cannot cross punctuation, whitespace or gaps.
     forms = defaultdict(list)
@@ -53,7 +77,7 @@ def find_dictionary_expressions(session: Session, tokens: list[JapaneseTokenized
                            and first.part_of_speech[0] == MajorPOS.PREFIX
                            and last.part_of_speech[0] == MajorPOS.NOUN)
             forms[surface].append((start, end, prefix_noun, None))
-            if last.part_of_speech[0] == MajorPOS.VERB and last.text != last.dictionary_form:
+            if (last.part_of_speech[0] == MajorPOS.VERB or last.part_of_speech[:2] == (MajorPOS.SUFFIX, "形容詞的")) and last.text != last.dictionary_form:
                 base = "".join(t.text for t in span[:-1]) + last.dictionary_form
                 if len(base) <= MAX_CHARACTERS:
                     forms[base].append((start, end, False, end - 1))
@@ -71,7 +95,9 @@ def find_dictionary_expressions(session: Session, tokens: list[JapaneseTokenized
     output = defaultdict(list)
     for form, spans in forms.items():
         for start, end, prefix_noun, head in spans:
-            eligible = [entry for entry in matches[form].values() if prefix_noun or _is_expression(entry.senses)]
+            span = tokens[start:end]
+            eligible = [entry for entry in matches[form].values() if prefix_noun or _is_expression(entry.senses)
+                        or _is_lexical_compound(span, entry.senses, head)]
             # A dictionary form with multiple entries needs disambiguation;
             # leave it ungrouped instead of selecting an arbitrary homophone.
             if len(eligible) == 1:

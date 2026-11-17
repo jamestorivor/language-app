@@ -21,12 +21,6 @@
   margin-top: 5px;
 }
 
-.rating-scale-skip .rating-scale-input:checked + .rating-scale-button {
-  border-color: #c9c9c9;
-  background: #f0f0f0;
-  color: #555;
-}
-
 .rating-scale-input {
   position: absolute;
   width: 1px;

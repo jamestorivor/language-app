@@ -145,7 +145,7 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
   });
 
   const pages = [
-    { score: 0, label: "Not encountered" },
+    { score: 0, label: "Unrated" },
     { score: 1, label: "1" },
     { score: 2, label: "2" },
     { score: 3, label: "3" },

@@ -10,11 +10,38 @@ from app.services.japanese_vocab.ranking import RankingCandidate, rank_by_pos_an
 # Kana homophones can have identical POS and conjugation, while JMdict's
 # priority tags do not establish which meaning fits a sentence. These defaults
 # apply only to reading lookups; an explicit kanji spelling takes precedence.
-KANA_VERB_DEFAULTS = {"なる": 1375610}  # 成る: to become
+# Reviewed defaults for ordinary spoken kana. These are fallbacks, not claims
+# that a reading can never mean something else. Explicit kanji always wins.
+KANA_DEFAULTS = {
+    ("なる", "動詞"): 1375610,  # 成る: become
+    ("する", "動詞"): 1157170,  # 為る: do
+    ("いける", "動詞"): 1631370,  # 行ける: can go / works
+    ("なくなる", "動詞"): 1529550,  # 無くなる: disappear / run out
+    ("つまる", "動詞"): 1226480,  # 詰まる: be packed / clogged
+    ("こと", "名詞"): 1313580,  # 事: matter
+    ("もの", "名詞"): 1502390,  # 物: thing
+}
+
+# JMdict form priorities are not sense frequencies. Prefer these common spoken
+# senses within the selected entry, retaining the other senses for inspection.
+# Match on gloss text rather than list position so source updates can reorder.
+SPOKEN_SENSE_DEFAULTS = {
+    1374550: "amazing",
+    1190860: "strange",
+    1009320: "rapidly",
+}
 
 def _lookup_forms(token: GroupToken):
-    # Surface is a last resort for entries whose Sudachi lemma is absent.
-    return list(dict.fromkeys((token.lookup_form, token.tokens[0].text)))
+    # A complete explicitly written dictionary form can correct a tokenizer's
+    # mistaken lemma (e.g. 生ける analysed as 生く + る). Kana remains lemma-
+    # first because it is often ambiguous with an inflection.
+    surface = token.text
+    has_negative_auxiliary = any(t.dictionary_form == "ない" and t.part_of_speech[0] == "助動詞"
+                                 for t in token.tokens[1:])
+    forms = (surface, token.lookup_form, token.tokens[0].text) if not _is_kana_form(surface) and not has_negative_auxiliary else (
+        token.lookup_form, surface, token.tokens[0].text
+    )
+    return list(dict.fromkeys(forms))
 
 
 def _applicable_senses(entry, lookup_form, reading, spelling_match):
@@ -43,13 +70,14 @@ def _applicable_senses(entry, lookup_form, reading, spelling_match):
 def _rank_word_id(wordToken: GroupToken, entries, spelling_match: bool, *, lookup_form=None, require_pos=False, return_candidates=False):
     lookup_form = lookup_form or wordToken.lookup_form
     head = wordToken.tokens[0]
+    lookup_pos = _lookup_pos(wordToken, lookup_form)
     reading = katakana_to_hiragana(head.katakana_reading) if head.text == lookup_form else ""
     candidates = []
     reading_matches = set()
     for entry in entries:
         senses, readings = _applicable_senses(entry, lookup_form, reading, spelling_match)
         parts_of_speech = {pos for _, tags in senses for pos in tags}
-        if require_pos and not any(_pos_matches(head.part_of_speech[0], pos) for pos in parts_of_speech):
+        if require_pos and not any(_pos_matches(lookup_pos, pos) for pos in parts_of_speech):
             continue
         if spelling_match and any(katakana_to_hiragana(r.reading) == reading for r in readings):
             reading_matches.add(entry.word_id)
@@ -58,9 +86,9 @@ def _rank_word_id(wordToken: GroupToken, entries, spelling_match: bool, *, looku
         candidates.append(RankingCandidate(entry.word_id, frozenset(parts_of_speech), frozenset(priorities)))
     if reading_matches:
         candidates = [candidate for candidate in candidates if candidate.word_id in reading_matches]
-    ranked = rank_by_pos_and_frequency(candidates, head.part_of_speech[0], head.part_of_speech[4])
-    if not spelling_match and head.part_of_speech[0] == "動詞":
-        default_source_id = KANA_VERB_DEFAULTS.get(lookup_form)
+    ranked = rank_by_pos_and_frequency(candidates, lookup_pos, head.part_of_speech[4])
+    if not spelling_match:
+        default_source_id = KANA_DEFAULTS.get((lookup_form, head.part_of_speech[0]))
         if default_source_id is not None:
             ids = {entry.word_id for entry in entries if getattr(entry, "source_entry_id", None) == default_source_id}
             preferred = next((candidate for candidate in ranked if candidate.word_id in ids), None)
@@ -74,6 +102,13 @@ def _rank_word_id(wordToken: GroupToken, entries, spelling_match: bool, *, looku
 
 def _is_kana_form(form):
     return bool(form) and all("ぁ" <= char <= "ゟ" or "ァ" <= char <= "ヿ" or char == "ー" for char in form)
+
+
+def _lookup_pos(token, form):
+    # Sudachi often tags the hesitation あの as a prenominal determiner.
+    if form == "あの" and token._followed_by_pause:
+        return "感動詞"
+    return token.tokens[0].part_of_speech[0]
 
 
 def _resolve_token(token, spellings, readings):
@@ -100,13 +135,15 @@ def _resolve_token(token, spellings, readings):
                     variants[candidate.word_id] = candidate, is_spelling
                 ranked_candidates = rank_by_pos_and_frequency(
                     [candidate for candidate, _ in variants.values()],
-                    token.tokens[0].part_of_speech[0], token.tokens[0].part_of_speech[4],
+                    _lookup_pos(token, form), token.tokens[0].part_of_speech[4],
                 )
                 ranked = [(candidate, variants[candidate.word_id][1]) for candidate in ranked_candidates]
-                # Preserve the reviewed なる default for otherwise ambiguous readings.
-                if not written and form in KANA_VERB_DEFAULTS and read:
-                    preferred = read[0].word_id
-                    ranked.sort(key=lambda item: item[0].word_id != preferred)
+                # Apply reviewed kana defaults after merging both lookup paths.
+                default_source_id = KANA_DEFAULTS.get((form, token.tokens[0].part_of_speech[0]))
+                ids = {entry.word_id for entry in [*spellings.get(form, []), *readings.get(form, [])]
+                       if getattr(entry, "source_entry_id", None) == default_source_id}
+                if default_source_id is not None:
+                    ranked.sort(key=lambda item: item[0].word_id not in ids)
             if ranked:
                 alternatives = [(candidate.word_id, is_spelling) for candidate, is_spelling in ranked]
                 return ranked[0][0].word_id, form, ranked[0][1], require_pos, alternatives
@@ -114,19 +151,28 @@ def _resolve_token(token, spellings, readings):
 
 
 def _selected_senses(entry, token, form, spelling_match, filter_pos):
-    if not filter_pos:
-        return entry.senses
     head = token.tokens[0]
     senses, _ = _applicable_senses(entry, form, katakana_to_hiragana(head.katakana_reading) if head.text == form else "", spelling_match)
-    compatible = [sense for sense, tags in senses if any(_pos_matches(head.part_of_speech[0], pos) for pos in tags)]
+    applicable = [sense for sense, _ in senses]
+    compatible = [sense for sense, tags in senses if any(_pos_matches(_lookup_pos(token, form), pos) for pos in tags)] if filter_pos else applicable
     # JMdict priority markers describe forms, not the order of meanings within
     # an entry. Sudachi calls conversational まあ an adverb; select its
     # reviewed hesitation sense when present, leaving the other meanings.
-    if form == "まあ" and head.part_of_speech[0] == "副詞" and token._followed_by_pause:
+    if form in {"まあ", "ま"} and token._followed_by_pause and (
+        head.part_of_speech[0] == "副詞" or head.part_of_speech[1] == "フィラー"
+    ):
+        # A shortened ま is tagged as an interjection, but the hesitation
+        # sense is tagged as an adverb in JMdict.
+        compatible = applicable
         compatible.sort(key=lambda sense: not any(
             "hesitating to express an opinion" in note for note in sense.get("s_inf", [])
         ))
-    return compatible or entry.senses
+    if form == "はあ" and token._followed_by_pause:
+        compatible.sort(key=lambda sense: "sigh" not in sense.get("glosses", []))
+    preferred_gloss = SPOKEN_SENSE_DEFAULTS.get(getattr(entry, "source_entry_id", None))
+    if preferred_gloss:
+        compatible.sort(key=lambda sense: not any(preferred_gloss in gloss.casefold() for gloss in sense.get("glosses", [])))
+    return compatible or applicable
 
 
 def get_word_id(session: Session, wordToken: GroupToken):
@@ -232,9 +278,10 @@ def get_word_details_batch(session: Session, word_tokens: list[GroupToken], user
             word_id = resolved[0] if resolved else None
             senses = []
             if resolved:
-                _, form, _, filter_pos, alternatives = resolved
-                for alternative_id, is_spelling in alternatives:
-                    senses.extend(_selected_senses(entries_by_id[alternative_id], token, form, is_spelling, filter_pos))
+                _, form, is_spelling, filter_pos, _ = resolved
+                # A word ID and its definitions must refer to the same entry;
+                # other homophones cannot be presented as its senses.
+                senses = _selected_senses(entries_by_id[word_id], token, form, is_spelling, filter_pos)
             else:
                 senses = None
         else:

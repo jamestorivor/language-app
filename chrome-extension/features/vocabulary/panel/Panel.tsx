@@ -32,6 +32,8 @@ function panelContent(
   panelRef: React.RefObject<HTMLDivElement | null>,
   onChange: (score: number) => void,
   language: "ja" | "en",
+  saving: boolean,
+  error: string,
 ) {
   if (!wordToken || !wordRect || !panelData || !windowData) return;
   else {
@@ -48,6 +50,9 @@ function panelContent(
     const senses = wordToken.senses ?? [];
     const score = wordToken.familiarity_score;
     const isRated = score != null && score >= 1 && score <= 5;
+    const surfaceGrammarIds = ["negative", "negative_desire", "desire", "plural", "way_of", "easy_to", "hard_to"];
+    const surfaceGrammar = (wordToken.grammar ?? []).filter((item) => surfaceGrammarIds.includes(item.id));
+    const otherGrammar = (wordToken.grammar ?? []).filter((item) => !surfaceGrammarIds.includes(item.id));
     return (
       <div
         ref={panelRef}
@@ -65,10 +70,10 @@ function panelContent(
               {language === "ja" ? wordToken.text : wordToken.lookup_form}{language === "ja" ? ` / ${reading || wordToken.text}` : ""}
             </h2>
           </div>
-          <div className="panel-score" aria-live="polite">
+          {wordToken.word_id !== null && <div className="panel-score" aria-live="polite">
             <span
               className="panel-score-value"
-              aria-label={isRated ? `Familiarity ${score} of 5` : score === -1 ? "Won’t learn" : "Unseen"}
+              aria-label={isRated ? `Familiarity ${score} of 5` : score === -1 ? "Won’t learn" : "Unrated"}
             >
               {isRated ? (
                 <>
@@ -76,14 +81,16 @@ function panelContent(
                   <span className="panel-score-total"> / 5</span>
                 </>
               ) : (
-                score === -1 ? "Won’t learn" : "Unseen"
+                score === -1 ? "Won’t learn" : "Unrated"
               )}
             </span>
-          </div>
+          </div>}
         </header>
         <section className="panel-translations" aria-label="Definitions">
+          {surfaceGrammar.map((item) => <p key={`${item.id}-${item.start_idx}`}><strong>Form:</strong> {item.meaning}</p>)}
           {senses.length > 0 && language === "ja" ? (
             <>
+              {surfaceGrammar.length > 0 && <p>Dictionary form: <span lang="ja">{wordToken.lookup_form}</span></p>}
               <p className="panel-primary-definition">{senses[0]?.glosses.join("; ")}</p>
               {senses.length > 1 && (
                 <details className="panel-other-meanings" key={`${wordToken.start_idx}-${wordToken.end_idx}-${wordToken.word_id}`}>
@@ -110,23 +117,25 @@ function panelContent(
                 </li>
               ))}
             </ol>
-          ) : (
+          ) : !wordToken.grammar?.length ? (
             <p className="panel-empty">No definitions available.</p>
-          )}
-        </section>
-        {wordToken.grammar && wordToken.grammar.length > 0 && (
-          <section className="panel-translations" aria-label="Grammar">
+          ) : null}
+          {otherGrammar.length > 0 && (
+          <div aria-label="Grammar">
             <strong>Grammar</strong>
             <ul>
-              {wordToken.grammar.map((item) => (
+              {otherGrammar.map((item) => (
                 <li key={`${item.id}-${item.start_idx}`}><span lang="ja">{item.text}</span> — {item.meaning}</li>
               ))}
             </ul>
-          </section>
-        )}
-        <footer className="panel-familiarity">
-          <RatingScale value={score ?? null} onChange={onChange} />
-        </footer>
+          </div>
+          )}
+        </section>
+        {wordToken.word_id !== null && <footer className="panel-familiarity">
+          <RatingScale value={score ?? null} onChange={onChange} disabled={saving} />
+          {saving && <p className="panel-save-status" role="status">Saving…</p>}
+          {error && <p className="panel-save-error" role="alert">{error}</p>}
+        </footer>}
       </div>
     );
   }
@@ -135,6 +144,8 @@ function panelContent(
 function Panel({ localJapDb, language, onFamiliarityChange }: PanelProps) {
   const [currWordId, setCurrWordId] = useState<number | null>();
   const [selectedToken, setSelectedToken] = useState<TokenGroup | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<{ wordId: number; message: string } | null>(null);
   const [currWordPosition, setCurrWordPosition] = useState<DOMRect | null>(
     null,
   );
@@ -166,7 +177,7 @@ function Panel({ localJapDb, language, onFamiliarityChange }: PanelProps) {
     const observer = new ResizeObserver(measurePanel);
     observer.observe(panel);
     return () => observer.disconnect();
-  }, [currWordId]);
+  }, [selectedToken]);
 
   useEffect(() => {
     function handleWindowResize() {
@@ -190,12 +201,14 @@ function Panel({ localJapDb, language, onFamiliarityChange }: PanelProps) {
 
       if (!clickInPanel) {
         setCurrWordId(null);
+        setSelectedToken(null);
       }
     }
 
     function handleKeyPress(event: globalThis.KeyboardEvent) {
       if (event.key == "Escape") {
         setCurrWordId(null);
+        setSelectedToken(null);
       }
     }
 
@@ -212,10 +225,10 @@ function Panel({ localJapDb, language, onFamiliarityChange }: PanelProps) {
     };
   }, [localJapDb]);
 
-  if (!currWordId || !currWordPosition) {
+  if (!selectedToken || !currWordPosition) {
     return null;
-  } else if (currWordId) {
-    const storedWord = localJapDb[currWordId];
+  } else {
+    const storedWord = currWordId != null ? localJapDb[currWordId] : undefined;
     const word = selectedToken && storedWord
       ? { ...selectedToken, familiarity_score: storedWord.familiarity_score }
       : selectedToken;
@@ -226,8 +239,18 @@ function Panel({ localJapDb, language, onFamiliarityChange }: PanelProps) {
         panelData,
         windowData,
         panelRef,
-        (score) => onFamiliarityChange(currWordId, score),
+        (score) => {
+          if (saving || currWordId == null) return;
+          const wordId = currWordId;
+          setSaving(true);
+          setSaveError(null);
+          void onFamiliarityChange(wordId, score)
+            .catch(() => setSaveError({ wordId, message: "Could not save this word. Please try again." }))
+            .finally(() => setSaving(false));
+        },
         language,
+        saving,
+        saveError && saveError.wordId === currWordId ? saveError.message : "",
       );
   }
 }

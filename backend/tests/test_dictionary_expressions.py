@@ -1,9 +1,21 @@
 from types import SimpleNamespace
+import pytest
 
 from app.services.japanese_vocab.dictionary_expressions import find_dictionary_expressions
 from app.services.japanese_vocab.expressions import ExpressionRule, TokenRule, match_reviewed_expression
 from app.services.japanese_vocab.grouping import find_group_end, regroup_tokens
 from app.services.japanese_vocab.parser import parse_japanese_text
+from app.schemas import JapaneseTokenizedResponse
+from sudachipy import SplitMode
+from app.services.japanese_vocab.parser import jap_dict
+
+
+def parse_short_tokens(text):
+    """Exercise compound recovery even where the default C mode already joins it."""
+    return [JapaneseTokenizedResponse(text=t.surface(), dictionary_form=t.dictionary_form(),
+                                     katakana_reading=t.reading_form(), start_idx=t.begin(), end_idx=t.end(),
+                                     part_of_speech=t.part_of_speech())
+            for t in jap_dict.tokenizer().tokenize(text, SplitMode.A)]
 
 
 def record(source_id, expression=False):
@@ -51,6 +63,38 @@ def test_dictionary_matches_reject_ambiguous_and_non_expression_spans():
 def test_dictionary_match_does_not_cross_whitespace():
     tokens = parse_japanese_text("お 茶")
     assert not find_dictionary_expressions(Session({"お茶": [record(100)]}), tokens)
+
+
+@pytest.mark.parametrize("surface, form, pos", [
+    ("見た目", "見た目", "noun (common) (futsuumeishi)"),
+    ("ポッドキャスト", "ポッドキャスト", "noun (common) (futsuumeishi)"),
+    ("価値観", "価値観", "noun (common) (futsuumeishi)"),
+    ("似通ってる", "似通う", "Godan verb with 'u' ending"),
+    ("利他的", "利他的", "adjectival nouns or quasi-adjectives (keiyodoshi)"),
+    ("自然界", "自然界", "noun (common) (futsuumeishi)"),
+    ("考え方", "考え方", "noun (common) (futsuumeishi)"),
+    ("捉え方", "捉え方", "noun (common) (futsuumeishi)"),
+    ("分かりやすい", "分かりやすい", "adjective (keiyoushi)"),
+    ("分かりやすくない", "分かりやすい", "adjective (keiyoushi)"),
+    ("可能性", "可能性", "noun (common) (futsuumeishi)"),
+    ("意欲的", "意欲的", "adjectival nouns or quasi-adjectives (keiyodoshi)"),
+])
+def test_dictionary_lexical_compounds(surface, form, pos):
+    tokens = parse_short_tokens(surface)
+    entry = SimpleNamespace(source_entry_id=123, senses=[{"pos": [pos]}])
+    groups = regroup_tokens(surface, tokens, find_dictionary_expressions(Session({form: [entry]}), tokens))
+    assert len(groups) == 1
+    assert (groups[0].text, groups[0].lookup_form, groups[0].source_entry_id) == (surface, form, 123)
+    assert groups[0].tokens == tokens
+    if surface.endswith("ない"):
+        assert any(item.id == "negative" for item in groups[0].grammar)
+
+
+def test_dictionary_compounds_do_not_merge_unrelated_particle_phrases_or_ambiguous_entries():
+    tokens = parse_japanese_text("猫の手")
+    assert not find_dictionary_expressions(Session({"猫の手": [record(1)]}), tokens)
+    tokens = parse_short_tokens("価値観")
+    assert not find_dictionary_expressions(Session({"価値観": [record(1), record(2)]}), tokens)
 
 
 def test_reviewed_registry_picks_longest_match_regardless_of_order():
