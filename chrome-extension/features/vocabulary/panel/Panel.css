@@ -80,6 +80,23 @@
   list-style: none;
 }
 
+.panel-primary-definition {
+  font-weight: 600;
+}
+
+.panel-other-meanings {
+  margin-top: 8px;
+}
+
+.panel-other-meanings summary {
+  color: var(--panel-muted);
+  cursor: pointer;
+}
+
+.panel-other-meanings .panel-definition-list {
+  margin-top: 6px;
+}
+
 .panel-definition {
   display: grid;
   grid-template-columns: 14px minmax(0, 1fr);

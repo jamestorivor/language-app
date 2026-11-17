@@ -60,12 +60,20 @@ export default function WordPanel({ word, language = "ja", anchor, onClose, onCh
     <div ref={panelRef} className="panel" role="region" aria-label="Word details"
       style={{ top: position.top, left: position.left, visibility: position.ready ? "visible" : "hidden" }}>
       <header className="panel-header">
-        <div className="panel-word"><h2 className="panel-reading" lang={language}>{word.lookup_form}{language === "ja" ? ` / ${reading || word.text}` : ""}</h2></div>
+        <div className="panel-word"><h2 className="panel-reading" lang={language}>{language === "ja" ? word.text : word.lookup_form}{language === "ja" ? ` / ${reading || word.text}` : ""}</h2></div>
         <div className="panel-score" aria-live="polite">{score === -1 ? "Won’t learn" : rated ? `${score} / 5` : "Unseen"}</div>
         <button type="button" onClick={onClose} aria-label="Close word details">×</button>
       </header>
       <section className="panel-translations" aria-label="Definitions">
-        {word.senses?.length ? <ol className="panel-definition-list">{word.senses.slice(0, 3).map((sense, index) => (
+        {word.senses?.length ? language === "ja" ? <>
+          <p className="panel-primary-definition">{word.senses[0].glosses.join("; ")}</p>
+          {word.senses.length > 1 && <details className="panel-other-meanings" key={`${word.start_idx}-${word.end_idx}-${word.word_id}`}>
+            <summary>Other meanings</summary>
+            <ol className="panel-definition-list">{word.senses.slice(1).map((sense, index) => (
+              <li className="panel-definition" key={index}><span className="panel-definition-number" aria-hidden="true">{index + 2}.</span><p>{sense.glosses.join("; ")}</p></li>
+            ))}</ol>
+          </details>}
+        </> : <ol className="panel-definition-list">{word.senses.slice(0, 3).map((sense, index) => (
           <li className="panel-definition" key={index}><span className="panel-definition-number" aria-hidden="true">{index + 1}.</span><p>{sense.glosses.join("; ")}</p></li>
         ))}</ol> : <p className="panel-empty">No definitions available.</p>}
       </section>

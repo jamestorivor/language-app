@@ -50,7 +50,7 @@ def test_find_group_end(text, expected_text):
             ["読み", "ます"], id="exclude-surrounding-tokens",
         ),
         pytest.param(
-            "社会人になりました。", 2, 3, "なりました", "なる", (4, 9),
+            "社会人になりました。", 3, 3, "なりました", "なる", (4, 9),
             ["なり", "まし", "た"], id="token-index-differs-from-character-offset",
         ),
         pytest.param(
@@ -62,8 +62,8 @@ def test_find_group_end(text, expected_text):
             ["読む"], id="single-final-token",
         ),
         pytest.param(
-            "私は牛丼です。", 2, 1, "牛丼", "牛丼", (2, 4),
-            ["牛丼"], id="single-noun",
+            "私は牛丼です。", 2, 2, "牛丼", "牛", (2, 4),
+            ["牛", "丼"], id="split-noun",
         ),
         pytest.param(
             "📚読みます。", 1, 2, "読みます", "読む", (1, 5),
@@ -130,9 +130,9 @@ def test_regroup_tokens_no_regroup():
 @pytest.mark.parametrize(
     "text, expected_groups",
     [
-        ("私は牛丼です。", ["私", "は", "牛丼", "です", "。"]),
+        ("私は牛丼です。", ["私", "は", "牛", "丼", "です", "。"]),
         ("本を読みます。", ["本", "を", "読みます", "。"]),
-        ("社会人になりました。", ["社会人", "に", "なりました", "。"]),
+        ("社会人になりました。", ["社会", "人", "に", "なりました", "。"]),
         ("肉を食べません。", ["肉", "を", "食べません", "。"]),
         ("今日は行かない。", ["今日", "は", "行かない", "。"]),
         ("昨日は行かなかった。", ["昨日", "は", "行かなかった", "。"]),

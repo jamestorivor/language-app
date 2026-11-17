@@ -45,7 +45,7 @@ function panelContent(
     const reading = katakanaToHiragana(
       wordToken.tokens.map((token) => token.katakana_reading).join(""),
     );
-    const senses = wordToken.senses?.slice(0, 3) ?? [];
+    const senses = wordToken.senses ?? [];
     const score = wordToken.familiarity_score;
     const isRated = score != null && score >= 1 && score <= 5;
     return (
@@ -62,7 +62,7 @@ function panelContent(
         <header className="panel-header">
           <div className="panel-word">
             <h2 className="panel-reading" lang={language}>
-              {wordToken.lookup_form}{language === "ja" ? ` / ${reading || wordToken.text}` : ""}
+              {language === "ja" ? wordToken.text : wordToken.lookup_form}{language === "ja" ? ` / ${reading || wordToken.text}` : ""}
             </h2>
           </div>
           <div className="panel-score" aria-live="polite">
@@ -82,9 +82,26 @@ function panelContent(
           </div>
         </header>
         <section className="panel-translations" aria-label="Definitions">
-          {senses.length > 0 ? (
+          {senses.length > 0 && language === "ja" ? (
+            <>
+              <p className="panel-primary-definition">{senses[0]?.glosses.join("; ")}</p>
+              {senses.length > 1 && (
+                <details className="panel-other-meanings" key={`${wordToken.start_idx}-${wordToken.end_idx}-${wordToken.word_id}`}>
+                  <summary>Other meanings</summary>
+                  <ol className="panel-definition-list">
+                    {senses.slice(1).map((sense, index) => (
+                      <li className="panel-definition" key={index}>
+                        <span className="panel-definition-number" aria-hidden="true">{index + 2}.</span>
+                        <p>{sense.glosses.join("; ")}</p>
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              )}
+            </>
+          ) : senses.length > 0 ? (
             <ol className="panel-definition-list">
-              {senses.map((sense, index) => (
+              {senses.slice(0, 3).map((sense, index) => (
                 <li className="panel-definition" key={index}>
                   <span className="panel-definition-number" aria-hidden="true">
                     {index + 1}.

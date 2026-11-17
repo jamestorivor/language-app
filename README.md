@@ -104,7 +104,9 @@ installation. Development tools, including Alembic and pytest, are installed
 with the default `uv sync` but excluded from production dependencies.
 The Linux spaCy wheels are pinned as direct sources so Vercel bundles the
 stripped package instead of downloading the full wheel during a cold start.
-This leaves enough temporary disk space to install Sudachi's core dictionary.
+Sudachi uses its full dictionary, which requires substantially more installation
+and runtime disk space than the core dictionary; check the deployment's size and
+temporary-storage limits before deploying.
 When upgrading spaCy, update its version and Linux wheel URLs together, then
 regenerate `backend/uv.lock`.
 

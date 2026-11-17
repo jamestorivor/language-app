@@ -175,6 +175,7 @@ def regroup_tokens(original_text : str, tokens : list[JapaneseTokenizedResponse]
             )
             curr_idx += 1
     for group in output_token_list:
+        group._followed_by_pause = original_text[group.end_idx:group.end_idx + 1] in {"、", "，", ","}
         group.grammar = annotate_grammar(group)
     annotate_cross_group_grammar(output_token_list, tokens, original_text)
     return output_token_list

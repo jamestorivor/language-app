@@ -28,6 +28,8 @@ def _pos_matches(sudachi_pos: str, jmdict_pos: str) -> bool:
         return pos.startswith("adverb") or pos in {"adv", "adv-to"}
     if sudachi_pos == "連体詞":
         return pos.startswith("pre-noun adjectival") or pos == "adj-pn"
+    if sudachi_pos == "感動詞":
+        return pos.startswith("interjection") or pos == "int"
     if sudachi_pos == "代名詞":
         return pos == "pronoun" or pos == "pn"
     return False
@@ -41,7 +43,7 @@ def rank_by_pos_and_frequency(
     Input order breaks ties. Unknown Sudachi categories and missing JMdict POS
     are neutral rather than being treated as incompatible.
     """
-    supported_pos = {"名詞", "動詞", "形容詞", "形状詞", "副詞", "連体詞", "代名詞"}
+    supported_pos = {"名詞", "動詞", "形容詞", "形状詞", "副詞", "連体詞", "代名詞", "感動詞"}
     sudachi_verb_class = None
     if sudachi_pos == "動詞":
         if conjugation_type.startswith(("上一段", "下一段")):
@@ -59,7 +61,7 @@ def rank_by_pos_and_frequency(
                 classes.add("godan")
         return classes
 
-    def score(candidate: RankingCandidate) -> int:
+    def score(candidate: RankingCandidate) -> tuple[int, int, int]:
         pos_score = 0
         if sudachi_pos in supported_pos and candidate.parts_of_speech:
             pos_score = 10 if any(
@@ -73,6 +75,7 @@ def rank_by_pos_and_frequency(
         # Multiple priority markers provide a modest tie-breaker;
         # never let commonness outweigh a compatible POS or verb class.
         frequency_score = min(len(common_tags), 2)
-        return pos_score + class_score + frequency_score
+        nf = [int(tag[2:]) for tag in candidate.priorities if tag.startswith("nf") and tag[2:].isdigit()]
+        return (pos_score + class_score, frequency_score, -min(nf, default=100))
 
     return sorted(candidates, key=score, reverse=True)
