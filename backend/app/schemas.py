@@ -13,7 +13,7 @@ class ParseJapaneseResponse(BaseModel):
 
 class UpdateFamiliarityScoreRequest(BaseModel):
     word_id : int
-    new_score : int = Field(ge=1, le=5)
+    new_score : Literal[-1, 1, 2, 3, 4, 5]
 
 class UpdateFamiliarityScoreResponse(BaseModel):
     word_id : int

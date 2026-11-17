@@ -68,7 +68,7 @@ function panelContent(
           <div className="panel-score" aria-live="polite">
             <span
               className="panel-score-value"
-              aria-label={isRated ? `Familiarity ${score} of 5` : "Unseen"}
+              aria-label={isRated ? `Familiarity ${score} of 5` : score === -1 ? "Won’t learn" : "Unseen"}
             >
               {isRated ? (
                 <>
@@ -76,7 +76,7 @@ function panelContent(
                   <span className="panel-score-total"> / 5</span>
                 </>
               ) : (
-                "Unseen"
+                score === -1 ? "Won’t learn" : "Unseen"
               )}
             </span>
           </div>

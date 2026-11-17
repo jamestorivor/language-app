@@ -1,11 +1,15 @@
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import JSON, create_engine, event
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import StaticPool
 
 from app.data_access.japanese_vocab import get_word_details, get_word_details_batch
 from app.db.models.japanese_vocab import JapaneseDictionary, JapaneseReading, JapaneseSpelling, JapaneseWordFamiliarity
 from app.db.models.user import User
+from app.db.session import get_db
+from app.main import app
 from app.services.japanese_vocab.grouping import regroup_tokens
 from app.services.japanese_vocab.parser import parse_japanese_text
 
@@ -19,7 +23,7 @@ def dictionary_session():
             if isinstance(column.type, (ARRAY, JSONB)):
                 changed_types.append((column, column.type))
                 column.type = JSON()
-    engine = create_engine("sqlite://")
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     try:
         for model in models:
             model.__table__.create(engine)
@@ -71,3 +75,26 @@ def test_batch_query_count_does_not_grow_for_repeated_words(dictionary_session):
     assert len(results) == 100
     assert all(result.word_id == 1 for result in results)
     assert len(queries) <= 4
+
+
+def test_japanese_wont_learn_is_saved_and_returned_by_parse(dictionary_session):
+    session, _ = dictionary_session
+
+    def db_override():
+        yield session
+
+    app.dependency_overrides[get_db] = db_override
+    try:
+        with TestClient(app) as client:
+            response = client.patch("/jap/update_familiarity_score", json={"word_id": 1, "new_score": -1})
+            assert response.status_code == 200
+            assert response.json()["new_score"] == -1
+            session.expire_all()
+            assert session.get(JapaneseWordFamiliarity, (1, 1)).familiarity_score == -1
+            parsed = client.post("/jap/parse", json={"text": "猫"})
+            assert parsed.status_code == 200
+            assert parsed.json()[0]["familiarity_score"] == -1
+            assert client.patch("/jap/update_familiarity_score", json={"word_id": 1, "new_score": 0}).status_code == 422
+            assert client.patch("/jap/update_familiarity_score", json={"word_id": 1, "new_score": -2}).status_code == 422
+    finally:
+        app.dependency_overrides.clear()

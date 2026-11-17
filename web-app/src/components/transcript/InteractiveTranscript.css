@@ -34,6 +34,10 @@
 .transcript-word-2 { --word-accent: 235 176 30; }
 .transcript-word-3 { --word-accent: 35 138 225; }
 .transcript-word-4 { --word-accent: 20 198 163; }
+.transcript-word--1 {
+  background-color: #f3f3f2;
+  border-bottom: 1px solid #e4e4e2;
+}
 .transcript-word:is(.transcript-word-0, .transcript-word-1, .transcript-word-2, .transcript-word-3, .transcript-word-4) {
   border-bottom: 1px solid rgb(var(--word-accent));
   box-shadow: 0 0 0 0.5px rgb(var(--word-accent) / 35%);
@@ -41,7 +45,7 @@
 }
 .transcript-word:hover { background-color: rgb(var(--word-accent, 120 113 108) / 34%); }
 
-.transcript-word:not(.transcript-word-5)::before {
+.transcript-word:not(.transcript-word-5, .transcript-word--1)::before {
   content: "";
   position: absolute;
   top: 0;

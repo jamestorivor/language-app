@@ -26,6 +26,17 @@ function RatingScale({ value, onChange }: RatingScaleProps) {
           </label>
         ))}
       </div>
+      <label className="rating-scale-option rating-scale-skip">
+        <input
+          className="rating-scale-input"
+          type="radio"
+          name={groupName}
+          value={-1}
+          checked={value === -1}
+          onChange={() => onChange(-1)}
+        />
+        <span className="rating-scale-button">Won’t learn</span>
+      </label>
     </fieldset>
   );
 }

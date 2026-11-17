@@ -90,7 +90,7 @@ def estimate(counts: dict[str, int], scores: dict[str, int], unmatched: int):
         "rated_percent": round(100 * rated / total, 1) if total else 0, "matched_occurrences": total,
         "unmatched_groups": unmatched,
         "dictionary_match_percent": round(100 * total / coverage_total, 1),
-        "unrated_unique": sum(1 for word in counts if not scores.get(word, 0)),
+        "unrated_unique": sum(1 for word in counts if scores.get(word, 0) not in WEIGHTS),
         "low_rated_unique": sum(1 for word in counts if scores.get(word, 0) in (1, 2)),
     }
 
@@ -99,9 +99,9 @@ def summarize(counts, unmatched, baseline, current):
     before = estimate(counts, baseline, unmatched)
     now = estimate(counts, current, unmatched)
     return {"baseline": before, "current": now,
-        "improved_unique": sum(1 for word in counts if baseline.get(word, 0) and current.get(word, 0) > baseline[word]),
-        "declined_unique": sum(1 for word in counts if current.get(word, 0) and baseline.get(word, 0) > current[word]),
-        "newly_rated_unique": sum(1 for word in counts if not baseline.get(word, 0) and current.get(word, 0))}
+        "improved_unique": sum(1 for word in counts if baseline.get(word, 0) in WEIGHTS and current.get(word, 0) in WEIGHTS and current[word] > baseline[word]),
+        "declined_unique": sum(1 for word in counts if baseline.get(word, 0) in WEIGHTS and current.get(word, 0) in WEIGHTS and current[word] < baseline[word]),
+        "newly_rated_unique": sum(1 for word in counts if baseline.get(word, 0) not in WEIGHTS and current.get(word, 0) in WEIGHTS)}
 
 
 def episode_summary(session: Session, episode, chunks):

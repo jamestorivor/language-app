@@ -69,7 +69,7 @@ export default function VocabularySummary({ comparison, baselineAt, addedAt, com
       </div>}
       {current && <details className="mt-5 border-t border-stone-100 pt-4 text-sm text-stone-600">
         <summary className="w-fit cursor-pointer font-semibold text-emerald-800 hover:text-emerald-950">About this estimate</summary>
-        <p className="mt-3 leading-relaxed">Green counts occurrences of dictionary groups rated 3–5 as provisionally known. Amber represents groups rated 1–2, unrated groups, and unmatched groups: you may know some of these too. The range shows both possibilities, rather than a confidence interval.</p>
+        <p className="mt-3 leading-relaxed">Green counts occurrences of dictionary groups rated 3–5 as provisionally known. Amber represents groups rated 1–2, unrated groups, and unmatched groups: you may know some of these too. Words marked “Won’t learn” are counted as unrated. The range shows both possibilities, rather than a confidence interval.</p>
         <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
           <div><dt className="text-stone-500">Provisionally known occurrences <span className="text-xs">(rated 3–5)</span></dt><dd className="font-semibold tabular-nums text-stone-800">{current.known_occurrences} of {current.coverage_occurrences}</dd></div>
           <div><dt className="text-stone-500">Uncertain occurrences</dt><dd className="font-semibold tabular-nums text-stone-800">{current.uncertain_occurrences}</dd></div>

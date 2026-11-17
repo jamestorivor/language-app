@@ -107,7 +107,7 @@ class JapaneseWordFamiliarity(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "familiarity_score BETWEEN 1 AND 5",
+            "familiarity_score = -1 OR familiarity_score BETWEEN 1 AND 5",
             name="valid_familiarity_score"
         ),
     )

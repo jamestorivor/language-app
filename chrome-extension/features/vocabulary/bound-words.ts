@@ -1,7 +1,9 @@
 import type { TokenGroup } from "@/contracts/parse-japanese";
 
 function get_familiarity_css_class(familiarity_score: number) {
-  if (familiarity_score == 0) {
+  if (familiarity_score === -1) {
+    return "wont-learn";
+  } else if (familiarity_score == 0) {
     return "unfamiliar";
   } else {
     return `familiarity-${familiarity_score?.toString()}`;

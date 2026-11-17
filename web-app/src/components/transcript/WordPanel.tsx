@@ -61,7 +61,7 @@ export default function WordPanel({ word, language = "ja", anchor, onClose, onCh
       style={{ top: position.top, left: position.left, visibility: position.ready ? "visible" : "hidden" }}>
       <header className="panel-header">
         <div className="panel-word"><h2 className="panel-reading" lang={language}>{word.lookup_form}{language === "ja" ? ` / ${reading || word.text}` : ""}</h2></div>
-        <div className="panel-score" aria-live="polite">{rated ? `${score} / 5` : "Unseen"}</div>
+        <div className="panel-score" aria-live="polite">{score === -1 ? "Won’t learn" : rated ? `${score} / 5` : "Unseen"}</div>
         <button type="button" onClick={onClose} aria-label="Close word details">×</button>
       </header>
       <section className="panel-translations" aria-label="Definitions">

@@ -21,6 +21,7 @@ export default function VocabularyApp() {
     for (const span of spans) {
       span.classList.remove(
         "unfamiliar",
+        "wont-learn",
         "familiarity-1",
         "familiarity-2",
         "familiarity-3",

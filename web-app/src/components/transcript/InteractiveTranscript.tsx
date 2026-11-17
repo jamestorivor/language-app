@@ -117,7 +117,7 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
     position = end;
     const score = token.familiarity_score;
     const className =
-      score !== null && score >= 0 && score <= 5
+      score !== null && score >= -1 && score <= 5
         ? ` transcript-word-${score}`
         : "";
     content.push(
@@ -144,21 +144,27 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
     );
   });
 
+  const pages = [
+    { score: 0, label: "Not encountered" },
+    { score: 1, label: "1" },
+    { score: 2, label: "2" },
+    { score: 3, label: "3" },
+    { score: -1, label: "Won’t learn" },
+  ];
+  const currentPage = pages[page];
   const seenIds = new Set<number>();
   const pageWords =
     tokens?.flatMap((token, index) => {
       if (
         !token.display ||
         token.word_id === null ||
-        token.familiarity_score !== page ||
+        token.familiarity_score !== currentPage.score ||
         seenIds.has(token.word_id)
       )
         return [];
       seenIds.add(token.word_id);
       return [{ token, index }];
     }) ?? [];
-  const pageLabels = ["Not encountered", "1", "2", "3"];
-
   return (
     <>
       <section
@@ -169,7 +175,7 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-stone-950">
-                Level: {pageLabels[page]}
+                Level: {currentPage.label}
               </h2>
               <p className="mt-1 text-sm text-stone-500" aria-live="polite">
                 Words from this segment
@@ -191,7 +197,7 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
               <button
                 type="button"
                 aria-label="Next vocabulary page"
-                disabled={page === 3}
+                disabled={page === pages.length - 1}
                 onClick={() => {
                   setPage(page + 1);
                   setSelection(null);
@@ -221,7 +227,7 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
                 <button
                   type="button"
                   key={token.word_id}
-                  className={`transcript-word transcript-word-${page}`}
+                  className={`transcript-word transcript-word-${currentPage.score}`}
                   aria-pressed={
                     selection?.source === "list" && selection.index === index
                   }

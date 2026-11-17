@@ -47,6 +47,18 @@ function injectWordStyles() {
       --vocab-accent: 20 198 163;
     }
 
+    .vocab-word.wont-learn {
+      background-color: rgb(128 128 128 / 8%);
+      border-radius: 5px;
+      padding: 1px 2px;
+      -webkit-box-decoration-break: clone;
+      box-decoration-break: clone;
+    }
+
+    .vocab-word.wont-learn:hover {
+      background-color: rgb(128 128 128 / 15%);
+    }
+
     .vocab-word:is(.unfamiliar, .familiarity-1, .familiarity-2, .familiarity-3, .familiarity-4):hover {
       background-color: rgb(var(--vocab-accent) / 34%);
     }

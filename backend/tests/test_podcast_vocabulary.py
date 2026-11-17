@@ -3,7 +3,7 @@
 from hashlib import sha256
 from types import SimpleNamespace
 
-from app.services.podcast.vocabulary import analyze_chunk, estimate
+from app.services.podcast.vocabulary import analyze_chunk, estimate, summarize
 
 
 def test_coverage_counts_known_occurrences_and_retains_uncertainty():
@@ -30,6 +30,27 @@ def test_coverage_does_not_lose_transcripts_with_only_unmatched_words():
     assert result["coverage_low"] == 0.0
     assert result["coverage_high"] == 100.0
     assert estimate({}, {}, unmatched=0) is None
+
+
+def test_wont_learn_is_uncertain_and_not_a_familiarity_rating():
+    result = estimate({"skipped": 2, "known": 1}, {"skipped": -1, "known": 5}, unmatched=0)
+
+    assert result["coverage_low"] == 33.3
+    assert result["uncertain_occurrences"] == 2
+    assert result["unrated_unique"] == 1
+    assert result["rated_percent"] == 33.3
+
+
+def test_wont_learn_transitions_are_not_familiarity_changes():
+    result = summarize(
+        {"skip": 1, "resume": 1, "improve": 1, "decline": 1, "new_skip": 1}, 0,
+        {"skip": 4, "resume": -1, "improve": 2, "decline": 4},
+        {"skip": -1, "resume": 3, "improve": 3, "decline": 2, "new_skip": -1},
+    )
+
+    assert result["improved_unique"] == 1
+    assert result["declined_unique"] == 1
+    assert result["newly_rated_unique"] == 1
 
 
 def test_analysis_refreshes_legacy_cache_and_includes_hidden_japanese_groups(monkeypatch):

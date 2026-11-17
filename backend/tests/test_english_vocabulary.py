@@ -67,6 +67,9 @@ def test_english_parsing_and_familiarity_endpoints():
                 word_id = by_text["went"]["word_id"]
                 assert client.patch("/eng/update_familiarity_score", json={"word_id": word_id, "new_score": 4}).status_code == 200
                 assert client.post("/eng/parse", json={"text": "went"}).json()[0]["familiarity_score"] == 4
+                assert client.patch("/eng/update_familiarity_score", json={"word_id": word_id, "new_score": -1}).status_code == 200
+                assert client.post("/eng/parse", json={"text": "went"}).json()[0]["familiarity_score"] == -1
+                assert client.patch("/eng/update_familiarity_score", json={"word_id": word_id, "new_score": 0}).status_code == 422
                 assert client.patch("/eng/update_familiarity_score", json={"word_id": word_id, "new_score": 6}).status_code == 422
                 assert client.patch("/eng/update_familiarity_score", json={"word_id": 99999, "new_score": 2}).status_code == 404
                 assert parse_english_text(session, "", 1) == []

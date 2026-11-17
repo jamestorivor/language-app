@@ -16,6 +16,11 @@
   cursor: pointer;
 }
 
+.rating-scale-skip {
+  display: block;
+  margin-top: 5px;
+}
+
 .rating-scale-input {
   position: absolute;
   width: 1px;
@@ -48,6 +53,12 @@
   border-color: var(--panel-accent);
   background: var(--panel-accent);
   color: #fff;
+}
+
+.rating-scale-skip .rating-scale-input:checked + .rating-scale-button {
+  border-color: #c6c6c6;
+  background: #ededed;
+  color: #555;
 }
 
 .rating-scale-input:focus-visible + .rating-scale-button {

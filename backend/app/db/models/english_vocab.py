@@ -22,5 +22,5 @@ class EnglishWordFamiliarity(Base):
     familiarity_score: Mapped[int]
 
     __table_args__ = (
-        CheckConstraint("familiarity_score BETWEEN 1 AND 5", name="valid_english_familiarity_score"),
+        CheckConstraint("familiarity_score = -1 OR familiarity_score BETWEEN 1 AND 5", name="valid_english_familiarity_score"),
     )
