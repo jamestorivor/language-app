@@ -46,7 +46,7 @@ def analyze_chunk(session: Session, chunk, language: str, cached):
     if not text.strip():
         return {}, 0
     # Bump the version if token matching or counting rules change.
-    fingerprint = sha256(("v4\0" + language + "\0" + text).encode()).hexdigest()
+    fingerprint = sha256(("v5\0" + language + "\0" + text).encode()).hexdigest()
     if cached and cached.fingerprint == fingerprint:
         return cached.counts, cached.unmatched
     groups = parse_groups(session, text, chunk.user_id, language)

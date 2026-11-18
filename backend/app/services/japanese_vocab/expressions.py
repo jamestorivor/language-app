@@ -52,6 +52,9 @@ KAMOSHIRE = (
 )
 
 EXPRESSION_RULES = (
+    # Reviewed conversational transcript spelling of ひっくり返る. Keep the
+    # following の separate, and use the verb's JMdict identity for ratings.
+    ExpressionRule((token("ひっ"), token("くり"), token("返"), token("えん")), "ひっくり返る", 1169320),
     ExpressionRule((*KAMOSHIRE, token(lemmas=("ない",), pos=("助動詞",))), "かもしれない", 1002970, 2),
     ExpressionRule((*KAMOSHIRE, token("ませ", lemmas=("ます",), pos=("助動詞",)), token("ん", lemmas=("ぬ",), pos=("助動詞",))), "かもしれない", 1002970, 2),
     ExpressionRule((token("ふっ", pos=("副詞",)), token("と", pos=("助詞", "格助詞"))), "ふっと", 1632500),

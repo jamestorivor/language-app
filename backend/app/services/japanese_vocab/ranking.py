@@ -30,6 +30,8 @@ def _pos_matches(sudachi_pos: str, jmdict_pos: str) -> bool:
         return pos.startswith("pre-noun adjectival") or pos == "adj-pn"
     if sudachi_pos == "代名詞":
         return pos == "pronoun" or pos == "pn"
+    if sudachi_pos == "感動詞":
+        return pos.startswith("interjection") or pos == "int"
     return False
 
 
@@ -41,7 +43,7 @@ def rank_by_pos_and_frequency(
     Input order breaks ties. Unknown Sudachi categories and missing JMdict POS
     are neutral rather than being treated as incompatible.
     """
-    supported_pos = {"名詞", "動詞", "形容詞", "形状詞", "副詞", "連体詞", "代名詞"}
+    supported_pos = {"名詞", "動詞", "形容詞", "形状詞", "副詞", "連体詞", "代名詞", "感動詞"}
     sudachi_verb_class = None
     if sudachi_pos == "動詞":
         if conjugation_type.startswith(("上一段", "下一段")):
