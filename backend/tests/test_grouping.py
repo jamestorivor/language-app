@@ -63,7 +63,7 @@ def test_find_group_end(text, expected_text):
         ),
         pytest.param(
             "私は牛丼です。", 2, 1, "牛丼", "牛丼", (2, 4),
-            ["牛丼"], id="compound-noun",
+            ["牛丼"], id="single-noun",
         ),
         pytest.param(
             "📚読みます。", 1, 2, "読みます", "読む", (1, 5),
@@ -257,78 +257,4 @@ def test_te_form_and_futto_groups_preserve_lookup_and_spans(text, expected_group
     assert [token for group in groups for token in group.tokens] == tokens
     for group in groups:
         assert text[group.start_idx:group.end_idx] == group.text
-
-
-@pytest.mark.parametrize("text, grammar_id", [
-    ("行きたくない", "negative_desire"),
-    ("できなくて", "negative"),
-    ("聞いてない", "negative"),
-    ("起きない", "negative"),
-    ("買わない", "negative"),
-    ("読みませんでした", "negative"),
-    ("行きたい", "desire"),
-    ("人たち", "plural"),
-    ("捉え方", "way_of"),
-    ("分かりやすい", "easy_to"),
-    ("分かりやすくない", "negative"),
-])
-def test_inflection_and_productive_suffix_grammar(text, grammar_id):
-    groups = regroup_tokens(text, parse_japanese_text(text))
-    assert len(groups) == 1
-    assert groups[0].text == text
-    annotation = next(item for item in groups[0].grammar if item.id == grammar_id)
-    assert text[annotation.start_idx:annotation.end_idx] == annotation.text == text
-
-
-@pytest.mark.parametrize("text", ["行く", "読んでみた", "かもしれない"])
-def test_positive_or_lexical_negative_is_not_mislabelled(text):
-    groups = regroup_tokens(text, parse_japanese_text(text))
-    assert not any(item.id in {"negative", "negative_desire"} for group in groups for item in group.grammar)
-
-
-@pytest.mark.parametrize("text, surface, grammar_id", [
-    ("公園で遊ぶ", "で", "particle_で"),
-    ("彼のために", "ため", "tame"),
-    ("するために", "ため", "tame"),
-    ("本では", "では", "dewa"),
-    ("これとは違う", "とは", "towa"),
-    ("というのは難しい", "というのは", "to_iu_no_wa"),
-    ("到着したところ", "ところ", "tokoro"),
-    ("ないし", "ないし", "naishi"),
-    ("本とかで", "とかで", "toka_de"),
-    ("本とかで読んだ", "とかで", "toka_de"),
-])
-def test_function_word_constructs_are_displayable_without_a_lexeme(text, surface, grammar_id, monkeypatch):
-    from app.schemas import ParseJapaneseResponse
-    from app.services.japanese_vocab.grouping import add_db_data_to_tokens
-
-    monkeypatch.setattr("app.services.japanese_vocab.grouping.get_word_details_batch",
-                        lambda db, tokens, user_id: [ParseJapaneseResponse(word_id=42, familiarity_score=0,
-                            senses=[{"glosses": ["wrong homophone"]}]) for _ in tokens])
-    groups = add_db_data_to_tokens(None, regroup_tokens(text, parse_japanese_text(text)), 1)
-    group = next(g for g in groups if g.text == surface)
-    assert group.display and group.word_id is None and group.senses is None
-    assert [item.id for item in group.grammar] == [grammar_id]
-    assert text[group.start_idx:group.end_idx] == surface
-
-
-def test_suru_construction_keeps_the_verb_and_ongoing_form():
-    text = "仕事をしている"
-    groups = regroup_tokens(text, parse_japanese_text(text))
-    verb = next(group for group in groups if group.lookup_form == "する")
-    assert verb.text == "している" and not verb._grammar_only
-    construction = next(item for item in verb.grammar if item.id == "wo_shite")
-    assert text[construction.start_idx:construction.end_idx] == construction.text == "をして"
-
-
-def test_te_ending_is_described_as_connective_grammar():
-    group = regroup_tokens("食べて寝る", parse_japanese_text("食べて寝る"))[0]
-    assert group.text == "食べて"
-    assert [(item.id, item.text) for item in group.grammar] == [("te_form", "て")]
-
-
-@pytest.mark.parametrize("text, surface", [("手を洗う", "手"), ("美しいところ", "ところ")])
-def test_lexical_homophones_are_not_forced_to_grammar(text, surface):
-    group = next(g for g in regroup_tokens(text, parse_japanese_text(text)) if g.text == surface)
-    assert not group._grammar_only
 

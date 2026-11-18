@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, PrivateAttr, model_validator
+from pydantic import BaseModel, Field, model_validator
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
@@ -75,8 +75,6 @@ class GrammarMatch(BaseModel):
 
 
 class GroupToken(BaseModel) :
-    _followed_by_pause: bool = PrivateAttr(default=False)
-    _grammar_only: bool = PrivateAttr(default=False)
     word_id : int | None = None
     source_entry_id: int | None = None
     text : str

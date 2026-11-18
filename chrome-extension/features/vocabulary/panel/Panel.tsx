@@ -47,12 +47,9 @@ function panelContent(
     const reading = katakanaToHiragana(
       wordToken.tokens.map((token) => token.katakana_reading).join(""),
     );
-    const senses = wordToken.senses ?? [];
+    const senses = wordToken.senses?.slice(0, 3) ?? [];
     const score = wordToken.familiarity_score;
     const isRated = score != null && score >= 1 && score <= 5;
-    const surfaceGrammarIds = ["negative", "negative_desire", "desire", "plural", "way_of", "easy_to", "hard_to"];
-    const surfaceGrammar = (wordToken.grammar ?? []).filter((item) => surfaceGrammarIds.includes(item.id));
-    const otherGrammar = (wordToken.grammar ?? []).filter((item) => !surfaceGrammarIds.includes(item.id));
     return (
       <div
         ref={panelRef}
@@ -67,10 +64,10 @@ function panelContent(
         <header className="panel-header">
           <div className="panel-word">
             <h2 className="panel-reading" lang={language}>
-              {language === "ja" ? wordToken.text : wordToken.lookup_form}{language === "ja" ? ` / ${reading || wordToken.text}` : ""}
+              {wordToken.lookup_form}{language === "ja" ? ` / ${reading || wordToken.text}` : ""}
             </h2>
           </div>
-          {wordToken.word_id !== null && <div className="panel-score" aria-live="polite">
+          <div className="panel-score" aria-live="polite">
             <span
               className="panel-score-value"
               aria-label={isRated ? `Familiarity ${score} of 5` : score === -1 ? "Won’t learn" : "Unrated"}
@@ -84,31 +81,12 @@ function panelContent(
                 score === -1 ? "Won’t learn" : "Unrated"
               )}
             </span>
-          </div>}
+          </div>
         </header>
         <section className="panel-translations" aria-label="Definitions">
-          {surfaceGrammar.map((item) => <p key={`${item.id}-${item.start_idx}`}><strong>Form:</strong> {item.meaning}</p>)}
-          {senses.length > 0 && language === "ja" ? (
-            <>
-              {surfaceGrammar.length > 0 && <p>Dictionary form: <span lang="ja">{wordToken.lookup_form}</span></p>}
-              <p className="panel-primary-definition">{senses[0]?.glosses.join("; ")}</p>
-              {senses.length > 1 && (
-                <details className="panel-other-meanings" key={`${wordToken.start_idx}-${wordToken.end_idx}-${wordToken.word_id}`}>
-                  <summary>Other meanings</summary>
-                  <ol className="panel-definition-list">
-                    {senses.slice(1).map((sense, index) => (
-                      <li className="panel-definition" key={index}>
-                        <span className="panel-definition-number" aria-hidden="true">{index + 2}.</span>
-                        <p>{sense.glosses.join("; ")}</p>
-                      </li>
-                    ))}
-                  </ol>
-                </details>
-              )}
-            </>
-          ) : senses.length > 0 ? (
+          {senses.length > 0 ? (
             <ol className="panel-definition-list">
-              {senses.slice(0, 3).map((sense, index) => (
+              {senses.map((sense, index) => (
                 <li className="panel-definition" key={index}>
                   <span className="panel-definition-number" aria-hidden="true">
                     {index + 1}.
@@ -117,25 +95,25 @@ function panelContent(
                 </li>
               ))}
             </ol>
-          ) : !wordToken.grammar?.length ? (
+          ) : (
             <p className="panel-empty">No definitions available.</p>
-          ) : null}
-          {otherGrammar.length > 0 && (
-          <div aria-label="Grammar">
+          )}
+        </section>
+        {wordToken.grammar && wordToken.grammar.length > 0 && (
+          <section className="panel-translations" aria-label="Grammar">
             <strong>Grammar</strong>
             <ul>
-              {otherGrammar.map((item) => (
+              {wordToken.grammar.map((item) => (
                 <li key={`${item.id}-${item.start_idx}`}><span lang="ja">{item.text}</span> — {item.meaning}</li>
               ))}
             </ul>
-          </div>
-          )}
-        </section>
-        {wordToken.word_id !== null && <footer className="panel-familiarity">
+          </section>
+        )}
+        <footer className="panel-familiarity">
           <RatingScale value={score ?? null} onChange={onChange} disabled={saving} />
           {saving && <p className="panel-save-status" role="status">Saving…</p>}
           {error && <p className="panel-save-error" role="alert">{error}</p>}
-        </footer>}
+        </footer>
       </div>
     );
   }
@@ -177,7 +155,7 @@ function Panel({ localJapDb, language, onFamiliarityChange }: PanelProps) {
     const observer = new ResizeObserver(measurePanel);
     observer.observe(panel);
     return () => observer.disconnect();
-  }, [selectedToken]);
+  }, [currWordId]);
 
   useEffect(() => {
     function handleWindowResize() {
@@ -201,14 +179,12 @@ function Panel({ localJapDb, language, onFamiliarityChange }: PanelProps) {
 
       if (!clickInPanel) {
         setCurrWordId(null);
-        setSelectedToken(null);
       }
     }
 
     function handleKeyPress(event: globalThis.KeyboardEvent) {
       if (event.key == "Escape") {
         setCurrWordId(null);
-        setSelectedToken(null);
       }
     }
 
@@ -225,10 +201,10 @@ function Panel({ localJapDb, language, onFamiliarityChange }: PanelProps) {
     };
   }, [localJapDb]);
 
-  if (!selectedToken || !currWordPosition) {
+  if (!currWordId || !currWordPosition) {
     return null;
-  } else {
-    const storedWord = currWordId != null ? localJapDb[currWordId] : undefined;
+  } else if (currWordId) {
+    const storedWord = localJapDb[currWordId];
     const word = selectedToken && storedWord
       ? { ...selectedToken, familiarity_score: storedWord.familiarity_score }
       : selectedToken;

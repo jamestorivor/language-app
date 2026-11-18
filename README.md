@@ -90,8 +90,8 @@ score. Since no rating explicitly means that a word is unknown, the upper bound
 is currently 100%. Expressions and conjugated forms can count as one group;
 Japanese and English tokenization differs, so the estimate is not directly
 comparable to published all-word coverage thresholds or between languages.
-Matched groups hidden in the transcript are included in the estimate; grammar-only
-spans without a rateable word are excluded. The baseline uses the same calculation with ratings
+Matched groups hidden in the transcript, including Japanese particles, are
+included in the estimate. The baseline uses the same calculation with ratings
 captured when the transcript was added or replaced; for older episodes, the
 baseline is captured on first analysis.
 
@@ -104,9 +104,7 @@ installation. Development tools, including Alembic and pytest, are installed
 with the default `uv sync` but excluded from production dependencies.
 The Linux spaCy wheels are pinned as direct sources so Vercel bundles the
 stripped package instead of downloading the full wheel during a cold start.
-Sudachi uses its full dictionary, which requires substantially more installation
-and runtime disk space than the core dictionary; check the deployment's size and
-temporary-storage limits before deploying.
+This leaves enough temporary disk space to install Sudachi's core dictionary.
 When upgrading spaCy, update its version and Linux wheel URLs together, then
 regenerate `backend/uv.lock`.
 

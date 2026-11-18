@@ -46,14 +46,13 @@ def analyze_chunk(session: Session, chunk, language: str, cached):
     if not text.strip():
         return {}, 0
     # Bump the version if token matching or counting rules change.
-    fingerprint = sha256(("v3\0" + language + "\0" + text).encode()).hexdigest()
+    fingerprint = sha256(("v4\0" + language + "\0" + text).encode()).hexdigest()
     if cached and cached.fingerprint == fingerprint:
         return cached.counts, cached.unmatched
     groups = parse_groups(session, text, chunk.user_id, language)
-    # Grammar-only spans have no rateable dictionary identity and should not
-    # inflate the unmatched word count. Other hidden matched groups still count.
-    lexical = [group for group in groups if not getattr(group, "_grammar_only", False)
-               and any(c.isalnum() for c in group.text)]
+    # Include matched lexical groups even when they are hidden in the transcript
+    # UI (for example, Japanese particles). Expressions remain single groups.
+    lexical = [group for group in groups if any(c.isalnum() for c in group.text)]
     counts = Counter(str(group.word_id) for group in lexical if group.word_id is not None)
     unmatched = sum(1 for group in lexical if group.word_id is None)
     if cached is None:

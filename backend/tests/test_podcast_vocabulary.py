@@ -55,7 +55,7 @@ def test_wont_learn_transitions_are_not_familiarity_changes():
 
 def test_analysis_refreshes_legacy_cache_and_includes_hidden_japanese_groups(monkeypatch):
     transcript = "猫は未知。"
-    old_fingerprint = sha256(("v2\0ja\0" + transcript).encode()).hexdigest()
+    old_fingerprint = sha256(("v3\0ja\0" + transcript).encode()).hexdigest()
     cached = SimpleNamespace(fingerprint=old_fingerprint, counts={"10": 1}, unmatched=0)
     chunk = SimpleNamespace(id=1, user_id=1, transcript=SimpleNamespace(text=transcript))
     calls = []
@@ -66,7 +66,6 @@ def test_analysis_refreshes_legacy_cache_and_includes_hidden_japanese_groups(mon
             SimpleNamespace(word_id=10, display=True, text="猫"),
             SimpleNamespace(word_id=11, display=False, text="は"),
             SimpleNamespace(word_id=None, display=False, text="未知"),
-            SimpleNamespace(word_id=None, display=True, text="では", _grammar_only=True),
             SimpleNamespace(word_id=None, display=False, text="。"),
         ]
 

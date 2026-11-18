@@ -102,21 +102,3 @@ def test_kimochi_no_hou_prefers_direction_over_news():
 
     groups = regroup_tokens("気持ちのほう", parse_japanese_text("気持ちのほう"))
     assert get_word_id(Session(), groups[-1]) == 2
-
-
-def test_inflected_surface_reading_does_not_filter_dictionary_form_candidates():
-    from app.data_access.japanese_vocab import _rank_word_id
-
-    def entry(word_id, reading, priority):
-        return SimpleNamespace(
-            word_id=word_id,
-            spellings=[SimpleNamespace(spelling="食べる", priorities=[])],
-            readings=[SimpleNamespace(reading=reading, priorities=[priority],
-                                      no_kanji=False, restricted_spellings=[])],
-            senses=[{"pos": ["Ichidan verb"]}],
-        )
-
-    group = regroup_tokens("食べます", parse_japanese_text("食べます"))[0]
-    # Sudachi's reading of the inflected head is タベ; it must not be used
-    # to exclude the more frequent entry whose lemma reading is タベル.
-    assert _rank_word_id(group, [entry(1, "たべ", "nf30"), entry(2, "たべる", "nf01")], True) == 2
