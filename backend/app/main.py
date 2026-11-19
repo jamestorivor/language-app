@@ -23,6 +23,7 @@ app.add_middleware(
         "http://localhost:5173",
         "https://language-app-jamestorivors-projects.vercel.app",
         "https://language-app-two-gamma.vercel.app",
+        "https://honne.space"
     ],
     allow_methods=["*"],
     allow_headers=["*"],
