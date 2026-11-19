@@ -9,15 +9,15 @@ from app.services.podcast.vocabulary import episode_summary, reset_baseline
 from app.services.podcast.external_transcript import parse_external_transcript
 from app.data_access import podcast as data
 from app.db.session import get_db
-from app.config import DEVELOPMENT_USER_ID
+from app.auth import current_user_id
 from app.schemas import PodcastChunkCreate, PodcastChunkResponse, PodcastEpisodeCreate, PodcastEpisodeUpdate, PodcastEpisodeResponse, PodcastTranscriptCreate, PodcastTranscriptResponse
 
 router = APIRouter(prefix="/podcasts", tags=["podcasts"])
 
 
 @router.post("", response_model=PodcastEpisodeResponse)
-def create_episode(request: PodcastEpisodeCreate, db: Session = Depends(get_db)):
-    existing = data.get_episode_by_audio_location(db, DEVELOPMENT_USER_ID, request.audio_location)
+def create_episode(request: PodcastEpisodeCreate, db: Session = Depends(get_db), user_id: int = Depends(current_user_id)):
+    existing = data.get_episode_by_audio_location(db, user_id, request.audio_location)
     if existing is not None:
         if existing.language != request.language:
             raise HTTPException(status_code=409, detail="This podcast is already in your library with a different language. Edit its details to change the language.")
@@ -34,27 +34,27 @@ def create_episode(request: PodcastEpisodeCreate, db: Session = Depends(get_db))
         if request.podcast_details.provider == "youtube"
         else None
     )
-    episode = data.add_episode(db, DEVELOPMENT_USER_ID, duration=duration, transcript=transcript, **request.model_dump(exclude={"podcast_details", "external_transcript", "external_transcript_format"}))
+    episode = data.add_episode(db, user_id, duration=duration, transcript=transcript, **request.model_dump(exclude={"podcast_details", "external_transcript", "external_transcript_format"}))
     if episode.language != request.language:
         raise HTTPException(status_code=409, detail="This podcast is already in your library with a different language. Edit its details to change the language.")
     return episode
 
 @router.get("", response_model=list[PodcastEpisodeResponse])
-def read_all_episodes(db : Session = Depends(get_db)):
-    return data.list_user_episodes(db, DEVELOPMENT_USER_ID)
+def read_all_episodes(db : Session = Depends(get_db), user_id: int = Depends(current_user_id)):
+    return data.list_user_episodes(db, user_id)
 
 
 @router.get("/{episode_id}", response_model=PodcastEpisodeResponse)
-def read_episode(episode_id: int, db: Session = Depends(get_db)):
-    episode = data.get_episode(db, DEVELOPMENT_USER_ID, episode_id)
+def read_episode(episode_id: int, db: Session = Depends(get_db), user_id: int = Depends(current_user_id)):
+    episode = data.get_episode(db, user_id, episode_id)
     if episode is None:
         raise HTTPException(status_code=404, detail="Episode not found")
     return episode
 
 
 @router.delete("/{episode_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_episode(episode_id: int, db: Session = Depends(get_db)):
-    episode = data.get_episode(db, DEVELOPMENT_USER_ID, episode_id)
+def delete_episode(episode_id: int, db: Session = Depends(get_db), user_id: int = Depends(current_user_id)):
+    episode = data.get_episode(db, user_id, episode_id)
     if episode is None:
         raise HTTPException(status_code=404, detail="Episode not found")
     data.delete_episode(db, episode)
@@ -62,8 +62,8 @@ def delete_episode(episode_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/{episode_id}", response_model=PodcastEpisodeResponse)
-def update_episode(episode_id: int, request: PodcastEpisodeUpdate, db: Session = Depends(get_db)):
-    episode = data.get_episode(db, DEVELOPMENT_USER_ID, episode_id)
+def update_episode(episode_id: int, request: PodcastEpisodeUpdate, db: Session = Depends(get_db), user_id: int = Depends(current_user_id)):
+    episode = data.get_episode(db, user_id, episode_id)
     if episode is None:
         raise HTTPException(status_code=404, detail="Episode not found")
     if request.refresh_youtube_transcript and (request.chunk_interval is None or request.external_transcript is not None):
@@ -71,7 +71,7 @@ def update_episode(episode_id: int, request: PodcastEpisodeUpdate, db: Session =
     if request.chunk_interval is not None:
         if request.chunk_interval < episode.duration / 10000:
             raise HTTPException(status_code=422, detail="An episode can have at most 10000 generated chunks")
-        chunks = data.list_chunks(db, DEVELOPMENT_USER_ID, episode_id)
+        chunks = data.list_chunks(db, user_id, episode_id)
         if request.external_transcript is not None:
             transcript = parse_external_transcript(request.external_transcript, episode.duration, require_timestamps=True, file_format=request.external_transcript_format)
         elif request.refresh_youtube_transcript:
@@ -92,7 +92,7 @@ def update_episode(episode_id: int, request: PodcastEpisodeUpdate, db: Session =
         data.rebuild_chunks(db, episode, request.chunk_interval, transcript)
     elif request.external_transcript is not None:
         transcript = parse_external_transcript(request.external_transcript, episode.duration, file_format=request.external_transcript_format)
-        data.replace_episode_transcript(db, DEVELOPMENT_USER_ID, episode_id, transcript)
+        data.replace_episode_transcript(db, user_id, episode_id, transcript)
     reset_vocabulary = (request.chunk_interval is not None or request.external_transcript is not None
                         or (request.language is not None and request.language != episode.language))
     episode.title = request.title
@@ -101,7 +101,7 @@ def update_episode(episode_id: int, request: PodcastEpisodeUpdate, db: Session =
         episode.language = request.language
     if reset_vocabulary:
         db.flush()
-        chunks = data.list_chunks(db, DEVELOPMENT_USER_ID, episode_id)
+        chunks = data.list_chunks(db, user_id, episode_id)
         reset_baseline(db, episode, any(c.transcript and c.transcript.text.strip() for c in chunks))
     db.commit()
     db.refresh(episode)
@@ -109,48 +109,48 @@ def update_episode(episode_id: int, request: PodcastEpisodeUpdate, db: Session =
 
 
 @router.get("/{episode_id}/vocabulary")
-def read_vocabulary(episode_id: int, db: Session = Depends(get_db)):
-    episode = data.get_episode(db, DEVELOPMENT_USER_ID, episode_id)
+def read_vocabulary(episode_id: int, db: Session = Depends(get_db), user_id: int = Depends(current_user_id)):
+    episode = data.get_episode(db, user_id, episode_id)
     if episode is None:
         raise HTTPException(status_code=404, detail="Episode not found")
-    return episode_summary(db, episode, data.list_chunks(db, DEVELOPMENT_USER_ID, episode_id))
+    return episode_summary(db, episode, data.list_chunks(db, user_id, episode_id))
 
 
 @router.post("/{episode_id}/chunks", response_model=PodcastChunkResponse, status_code=status.HTTP_201_CREATED)
-def create_chunk(episode_id: int, request: PodcastChunkCreate, db: Session = Depends(get_db)):
-    episode = data.get_episode(db, DEVELOPMENT_USER_ID, episode_id)
+def create_chunk(episode_id: int, request: PodcastChunkCreate, db: Session = Depends(get_db), user_id: int = Depends(current_user_id)):
+    episode = data.get_episode(db, user_id, episode_id)
     if episode is None:
         raise HTTPException(status_code=404, detail="Episode not found")
     if request.end_time > episode.duration:
         raise HTTPException(status_code=422, detail="Chunk end time exceeds episode duration")
-    return data.create_new_chunk(db, DEVELOPMENT_USER_ID, episode_id, request.start_time, request.end_time)
+    return data.create_new_chunk(db, user_id, episode_id, request.start_time, request.end_time)
 
 
 @router.get("/{episode_id}/chunks", response_model=list[PodcastChunkResponse])
-def read_chunks(episode_id: int, db: Session = Depends(get_db)):
-    if data.get_episode(db, DEVELOPMENT_USER_ID, episode_id) is None:
+def read_chunks(episode_id: int, db: Session = Depends(get_db), user_id: int = Depends(current_user_id)):
+    if data.get_episode(db, user_id, episode_id) is None:
         raise HTTPException(status_code=404, detail="Episode not found")
-    return data.list_chunks(db, DEVELOPMENT_USER_ID, episode_id)
+    return data.list_chunks(db, user_id, episode_id)
 
 
-def owned_chunk(db: Session, chunk_id: int):
-    chunk = data.get_chunk(db, DEVELOPMENT_USER_ID, chunk_id)
+def owned_chunk(db: Session, chunk_id: int, user_id: int):
+    chunk = data.get_chunk(db, user_id, chunk_id)
     if chunk is None:
         raise HTTPException(status_code=404, detail="Chunk not found")
     return chunk
 
 
 @router.get("/chunks/{chunk_id}", response_model=PodcastChunkResponse)
-def read_chunk(chunk_id: int, db: Session = Depends(get_db)):
-    return owned_chunk(db, chunk_id)
+def read_chunk(chunk_id: int, db: Session = Depends(get_db), user_id: int = Depends(current_user_id)):
+    return owned_chunk(db, chunk_id, user_id)
 
 
 @router.put("/chunks/{chunk_id}/transcript", response_model=PodcastTranscriptResponse)
-def put_transcript(chunk_id: int, request: PodcastTranscriptCreate, db: Session = Depends(get_db)):
-    return data.save_transcript(db, owned_chunk(db, chunk_id), request.text)
+def put_transcript(chunk_id: int, request: PodcastTranscriptCreate, db: Session = Depends(get_db), user_id: int = Depends(current_user_id)):
+    return data.save_transcript(db, owned_chunk(db, chunk_id, user_id), request.text)
 
 
 @router.delete("/chunks/{chunk_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_chunk(chunk_id: int, db: Session = Depends(get_db)):
-    data.delete_chunk(db, owned_chunk(db, chunk_id))
+def delete_chunk(chunk_id: int, db: Session = Depends(get_db), user_id: int = Depends(current_user_id)):
+    data.delete_chunk(db, owned_chunk(db, chunk_id, user_id))
     return Response(status_code=status.HTTP_204_NO_CONTENT)

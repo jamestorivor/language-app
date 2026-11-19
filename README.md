@@ -20,7 +20,7 @@ retained for local and extension clients.
 
 Select **Services** as the Vercel project framework and configure `DATABASE_URL`
 with a reachable PostgreSQL database. Provision the existing schema, Japanese
-dictionary data, and development user before use. Podcast metadata lookup also
+dictionary data, and the latest migrations before use. Podcast metadata lookup also
 uses `YOUTUBE_API_KEY` for YouTube, or `SPOTIFY_CLIENT_ID` and
 `SPOTIFY_CLIENT_SECRET` for Spotify (`SPOTIFY_MARKET` is optional). Run
 `vercel dev` from the repository root to test both services together.
@@ -33,10 +33,50 @@ The provider charges a credit for an authenticated lookup even when it fails.
 The requested podcast language must be available: fallback captions in another
 language are rejected. The former Webshare proxy settings are no longer used.
 
-The backend currently uses a fixed development user and does not authenticate
-API requests. Protect the deployment or add authentication before exposing real
-user data. A local `VITE_API_BASE_URL` can point the Vite development server to
-the backend origin; deployed builds should use the default same-origin API.
+## Clerk authentication
+
+Create a Clerk application and configure the desired sign-in methods in its dashboard.
+Set `VITE_CLERK_PUBLISHABLE_KEY` in the web app build environment. The backend
+requires `CLERK_AUTHORIZED_PARTIES`, a comma-separated list of exact allowed
+frontend origins (for example `http://localhost:5173,https://your-app.example`),
+and either `CLERK_JWT_KEY` (the Clerk JWT public key, with literal `\n` in place
+of line breaks) or `CLERK_SECRET_KEY` for fetching verification keys. Keep the
+secret key on the server. Use keys from the same Clerk instance on both sides.
+A local `VITE_API_BASE_URL` can point Vite to the backend origin; deployed builds
+should normally use the same-origin API. If the web app is hosted on another
+origin, add it to the backend CORS allowlist in `backend/app/main.py` too.
+
+Run `uv sync` and `uv run alembic upgrade head` from `backend` before starting
+the updated application. Clerk handles sign-up, sign-in, and sign-out; every API
+request carries a short-lived session token verified by the backend. The first
+request creates a local user linked to the Clerk user ID. Podcasts, vocabulary,
+study cards, and settings are scoped to that user.
+
+Existing data belonging to the former development user remains in the database,
+but is not automatically assigned to a new account. To retain it, back up the
+database, find the intended Clerk user ID in the Clerk dashboard, and link the
+old user row to that ID **before the account first makes an API request**. For
+example, on the intended database, use a parameterized SQL client to set
+`users.clerk_id` on the old row (normally `id = 1`) to that exact Clerk user ID,
+only after verifying the row and account are correct. The unique constraint
+prevents the same Clerk ID being linked twice. If the new account has already
+created a local row, a separate data migration is needed; do not delete either
+row without reconciling its data.
+
+### Browser extension
+
+Enable the Native API in the Clerk dashboard. Configure the extension build with
+`WXT_CLERK_PUBLISHABLE_KEY` (the same Clerk instance),
+`WXT_CLERK_FRONTEND_API` (the full Frontend API URL from Clerk), and
+`WXT_API_BASE_URL` (the backend URL ending in `/`, including `/api/` if needed).
+The build adds these hosts to its permissions. Sign in through the extension
+popup with a method supported by Clerk's popup flow; this is a separate session
+from the web app. The backend's `CLERK_AUTHORIZED_PARTIES` must also include the
+extension's exact `chrome-extension://<extension-id>` origin if that is the
+session token's authorized party. Use `WXT_EXTENSION_PUBLIC_KEY` to keep a
+stable extension ID and register it in Clerk as required. Reload the extension
+after changing build settings. See [Clerk's extension setup](https://clerk.com/docs/chrome-extension/getting-started/quickstart)
+and [session token documentation](https://clerk.com/docs/guides/sessions/session-tokens).
 
 ## English vocabulary
 
@@ -70,7 +110,7 @@ are separated for display, and EJDict's usage annotations are preserved. Exact c
 dictionary expressions are supported; separated phrasal verbs and automatic
 sense disambiguation are not currently resolved. Reload an extension page to
 change the selected language. English scores are independent of Japanese
-scores and, like the existing feature, currently use the fixed development user.
+scores and are saved to the signed-in account.
 
 To change a podcast's segment length, open its segments page and select **Edit
 podcast details**. Enter a new length in minutes and save. The app rebuilds all
@@ -123,8 +163,8 @@ after updating the application. The migration adds and populates levels for
 existing dictionaries; later dictionary imports assign levels to new entries.
 Import the English dictionary as described above and, from `backend`, run
 `uv run python -m app.db.import_jap_dictionary` to import the included JMdict
-data. Importing is necessary before the feature can mark words. As with other
-familiarity updates, the current application uses the fixed development user.
+data. Importing is necessary before the feature can mark words. Familiarity updates
+are saved to the signed-in account.
 
 The bundled Japanese level mapping is derived from [OpenJLPT](https://github.com/evanclan/OpenJLPT),
 which uses JMdict and KANJIDIC2 (EDRDG), Jonathan Waller's JLPT lists, and
@@ -173,8 +213,7 @@ can cover more than the selected sentence. Older or untimed transcripts show
 an unavailable timestamp instead of an estimate. Refreshing YouTube captions
 or replacing a transcript with timestamped text may restore navigation when
 the saved sentence can be matched unambiguously. Playback in the app currently
-supports YouTube only. As with the rest of the app, study uses the fixed
-development user.
+supports YouTube only. Study data is saved to the signed-in account.
 
 The English mapping is derived from [Open Language Profiles](https://github.com/vitwits/english-wordlist-cefr-a1-c2):
 The CEFR-J Wordlist Version 1.5, compiled by Yukio Tono, Tokyo University of

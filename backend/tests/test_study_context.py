@@ -1,3 +1,4 @@
+from app.auth import current_user_id
 """Study source snapshots never enroll cards and never invent timestamps."""
 import pytest
 from fastapi.testclient import TestClient
@@ -191,7 +192,7 @@ def test_source_lookup_is_user_scoped_even_after_removal(context, monkeypatch):
     db.commit()
     card = _add(client)
     assert client.delete(f"/api/study/cards/{card['id']}").status_code == 204
-    monkeypatch.setattr("app.api.study.DEVELOPMENT_USER_ID", 2)
+    monkeypatch.setitem(app.dependency_overrides, current_user_id, lambda: 2)
     assert client.get(f"/api/study/cards/{card['id']}/sources").status_code == 404
     assert client.get("/api/study/cards?include_removed=true").json() == []
 

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useLanguage } from "./i18n-context";
 import { Link, NavLink, Route, Routes } from "react-router";
 import "./App.css";
@@ -15,7 +16,7 @@ import BackButton from "./components/BackButton";
 
 
 
-function App() {
+function App({ accountControl }: { accountControl?: ReactNode }) {
   const { t } = useLanguage();
   const links = [
     { to: "/", label: t("Home") },
@@ -54,12 +55,15 @@ function App() {
               </NavLink>
             ))}
           </nav>
+          <div className="flex items-center gap-3">
           <NavLink to="/settings" aria-label={t("User settings")} title={t("User settings")} className="inline-flex h-10 w-10 items-center justify-center rounded-full text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 aria-[current=page]:bg-emerald-50 aria-[current=page]:text-emerald-900">
             <svg aria-hidden="true" viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="8" r="3.5" />
               <path d="M5 20a7 7 0 0 1 14 0" />
             </svg>
           </NavLink>
+          {accountControl}
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14">

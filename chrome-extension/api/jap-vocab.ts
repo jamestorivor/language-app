@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./config";
+import { authenticatedFetch } from "./auth";
 import type { UpdateFamiliarityScoreResponse } from "@/contracts/jap-vocab";
 
 async function updateWordFamiliarity(
@@ -7,7 +8,7 @@ async function updateWordFamiliarity(
   language: "ja" | "en" = "ja",
 ): Promise<UpdateFamiliarityScoreResponse> {
   const url = new URL(`${language === "en" ? "eng" : "jap"}/update_familiarity_score`, API_BASE_URL);
-  return await fetch(url, {
+  return await authenticatedFetch(url, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",

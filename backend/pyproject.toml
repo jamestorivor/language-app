@@ -17,6 +17,7 @@ dependencies = [
     "en-core-web-sm==3.8.0",
     "fsrs==6.3.3",
     "tzdata>=2026.5",
+    "clerk-backend-api>=7.1.0",
 ]
 
 [dependency-groups]

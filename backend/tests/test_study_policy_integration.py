@@ -1,3 +1,4 @@
+from app.auth import current_user_id
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -158,7 +159,7 @@ def test_stats_count_only_due_enrolled_cards_and_local_daily_completions(study, 
     # Results must be scoped to the resolved user, including review history.
     db.add(User(id=2, name="other"))
     db.commit()
-    monkeypatch.setattr("app.api.study.DEVELOPMENT_USER_ID", 2)
+    monkeypatch.setitem(app.dependency_overrides, current_user_id, lambda: 2)
     assert client.get("/api/study/stats").json() == {"due_count": 0, "due_today_count": 0, "completed_count": 0}
 
 
@@ -301,7 +302,7 @@ def test_user_cannot_read_or_modify_another_users_study_card(study, monkeypatch)
     db.add(User(id=2, name="other"))
     db.commit()
     card = client.post("/api/study/cards", json=card_payload()).json()
-    monkeypatch.setattr("app.api.study.DEVELOPMENT_USER_ID", 2)
+    monkeypatch.setitem(app.dependency_overrides, current_user_id, lambda: 2)
     assert client.get("/api/study/cards").json() == []
     assert client.post(f"/api/study/cards/{card['id']}/review", json={"rating": 3, "version": card["version"]}).status_code == 404
     assert client.delete(f"/api/study/cards/{card['id']}").status_code == 404

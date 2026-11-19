@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./config";
+import { authenticatedFetch } from "./auth";
 import type { ParseJapaneseResponse } from "@/contracts/parse-japanese";
 
 async function fetchJapaneseTokenGroups(
@@ -6,7 +7,7 @@ async function fetchJapaneseTokenGroups(
   language: "ja" | "en" = "ja",
 ): Promise<ParseJapaneseResponse> {
   const url = new URL(`${language === "en" ? "eng" : "jap"}/parse`, API_BASE_URL);
-  return await fetch(url, {
+  return await authenticatedFetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

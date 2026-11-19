@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Show, SignInButton, UserButton } from "@clerk/chrome-extension";
 import "./App.css";
 import { PARSE_CURRENT_PAGE_MESSAGE_TYPE } from "@/contracts/content-messages";
 
@@ -33,6 +34,8 @@ function App() {
 
   return (
     <main>
+      <Show when="signed-out"><p>Sign in to use your vocabulary.</p><SignInButton mode="modal" /></Show>
+      <Show when="signed-in"><UserButton />
       <label>Language <select value={language} onChange={(event) => setLanguage(event.target.value as "ja" | "en")}>
         <option value="ja">Japanese</option>
         <option value="en">English</option>
@@ -45,6 +48,7 @@ function App() {
         Parse this page
       </button>
       {status && <p>{status}</p>}
+      </Show>
     </main>
   );
 }

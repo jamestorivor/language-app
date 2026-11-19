@@ -16,6 +16,7 @@
     "test:page": "python3 -m http.server 8080 --bind 127.0.0.1 --directory test-pages"
   },
   "dependencies": {
+    "@clerk/chrome-extension": "^3.1.110",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
