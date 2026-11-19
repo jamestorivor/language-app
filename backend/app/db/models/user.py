@@ -12,5 +12,6 @@ class User(Base):
     fsrs_maximum_interval: Mapped[int] = mapped_column(Integer, nullable=False, default=36500, server_default=text('36500'))
     fsrs_fuzzing: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text('true'))
     learning_language: Mapped[str] = mapped_column(String(2), nullable=False, default="ja", server_default="ja")
+    learning_language_selected: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     study_shortcuts: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # date_created : ???

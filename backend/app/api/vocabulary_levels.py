@@ -66,6 +66,12 @@ def get_mark_known_progress(language: Literal["ja", "en"], db: Session = Depends
 
 @router.post("/vocabulary/mark-known", response_model=MarkKnownResponse)
 def mark_known(request: MarkKnownRequest, db: Session = Depends(get_db), user_id: int = Depends(current_user_id)):
+    result = mark_known_words(request, db, user_id)
+    db.commit()
+    return result
+
+
+def mark_known_words(request: MarkKnownRequest, db: Session, user_id: int) -> MarkKnownResponse:
     levels = LEVELS[request.language]
     if request.level not in levels:
         raise HTTPException(status_code=422, detail="Invalid level for language")
@@ -91,5 +97,4 @@ def mark_known(request: MarkKnownRequest, db: Session = Depends(get_db), user_id
     matched_words = len(db.scalars(statement).all())
     for membership in memberships:
         refresh_manual_familiarity(db, membership, 5)
-    db.commit()
     return MarkKnownResponse(matched_words=matched_words)

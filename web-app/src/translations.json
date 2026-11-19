@@ -426,5 +426,15 @@
   "The server is not configured for sign-in. Check the backend authentication settings and restart it.": "サーバーのログイン設定ができていません。バックエンドの認証設定を確認し、再起動してください。",
   "Could not load your learning language.": "学習言語を読み込めませんでした。",
   "Loading your profile…": "プロフィールを読み込んでいます…",
-  "Could not save your learning language. Please try again.": "学習言語を保存できませんでした。もう一度お試しください。"
+  "Could not save your learning language. Please try again.": "学習言語を保存できませんでした。もう一度お試しください。",
+  "Get started": "はじめましょう",
+  "What would you like to learn?": "何語を学びたいですか？",
+  "Choose a language to get started. You can change it later in settings.": "学習する言語を選んでください。後から設定で変更できます。",
+  "Your learning language": "学習する言語",
+  "Continue": "続ける",
+  "Words you already know (optional)": "すでに知っている単語（任意）",
+  "Choose a level to mark its words and all easier words as known. You can also do this later in settings.": "レベルを選ぶと、そのレベルとそれ以下の単語を知っている単語として設定します。後から設定でも変更できます。",
+  "Start without marking words": "単語を設定せずに始める",
+  "These words will be rated 5, replacing any existing ratings. Level lists are approximate and do not cover every word.": "対象の単語は評価5に設定され、既存の評価は上書きされます。レベル別の単語リストは目安であり、すべての単語を網羅していません。",
+  "Could not complete setup. Please try again.": "初期設定を完了できませんでした。もう一度お試しください。"
 }

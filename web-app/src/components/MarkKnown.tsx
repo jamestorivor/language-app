@@ -2,16 +2,11 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "../i18n-context";
 import { API_BASE_URL } from "../api/config";
 import { loggedFetch } from "../api/client";
-import { useStudyLanguage } from "../utils/studyLanguage";
+import { studyLevels as levels, useStudyLanguage } from "../utils/studyLanguage";
 import KnownWordCount from "./KnownWordCount";
 
 type Language = "ja" | "en";
 type LevelProgress = { level: string; known: number; total: number };
-const levels: Record<Language, string[]> = {
-  ja: ["N5", "N4", "N3", "N2", "N1"],
-  en: ["A1", "A2", "B1", "B2", "C1", "C2"],
-};
-
 async function loadProgress(language: Language): Promise<LevelProgress[]> {
   const url = new URL("vocabulary/mark-known", API_BASE_URL);
   url.searchParams.set("language", language);

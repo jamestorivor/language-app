@@ -15,7 +15,7 @@ function AuthenticationGate() {
   setSessionTokenProvider(isSignedIn ? getToken : undefined);
   if (!isLoaded) return <p className="p-8">Loading account…</p>;
   if (!isSignedIn) return <main className="min-h-screen grid place-items-center bg-[#f7f7f4] p-6"><SignIn routing="hash" /></main>;
-  return <StudyLanguageProvider key={userId}><App accountControl={<UserButton />} /></StudyLanguageProvider>;
+  return <StudyLanguageProvider key={userId} accountControl={<UserButton />}><App accountControl={<UserButton />} /></StudyLanguageProvider>;
 }
 
 if (!publishableKey) throw new Error("Set VITE_CLERK_PUBLISHABLE_KEY to enable sign-in");

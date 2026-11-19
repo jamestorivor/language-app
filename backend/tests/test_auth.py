@@ -72,9 +72,11 @@ def test_learning_language_is_saved_per_account(auth_setup):
     client, _db, key = auth_setup
     one, two = headers(token(key)), headers(token(key, sub="user_two"))
     assert client.get("/api/profile").status_code == 401
-    assert client.get("/api/profile", headers=one).json() == {"learning_language": "ja"}
+    assert client.get("/api/profile", headers=one).json() == {"learning_language": "ja", "onboarding_required": True}
     assert client.put("/api/profile", headers=one, json={"learning_language": "en"}).json() == {"learning_language": "en"}
-    assert client.get("/api/profile", headers=one).json() == {"learning_language": "en"}
-    assert client.get("/api/profile", headers=two).json() == {"learning_language": "ja"}
+    assert client.get("/api/profile", headers=one).json() == {"learning_language": "en", "onboarding_required": False}
+    assert client.get("/api/profile", headers=two).json() == {"learning_language": "ja", "onboarding_required": True}
+    assert client.put("/api/profile", headers=two, json={"learning_language": "ja"}).status_code == 200
+    assert client.get("/api/profile", headers=two).json() == {"learning_language": "ja", "onboarding_required": False}
     assert client.put("/api/profile", headers=one, json={"learning_language": "fr"}).status_code == 422
-    assert client.get("/api/profile", headers=one).json() == {"learning_language": "en"}
+    assert client.get("/api/profile", headers=one).json() == {"learning_language": "en", "onboarding_required": False}

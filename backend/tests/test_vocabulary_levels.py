@@ -76,6 +76,58 @@ def test_mark_known_includes_threshold_and_preserves_other_words(language, level
     engine.dispose()
 
 
+@pytest.mark.parametrize("language,levels,threshold", [
+    ("en", ["A1", "A2", "B1"], "A2"),
+    ("ja", ["N5", "N4", "N3"], "N4"),
+])
+def test_onboarding_marks_selected_level_and_saves_profile_together(language, levels, threshold):
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    dictionary = EnglishDictionary if language == "en" else JapaneseDictionary
+    progress = EnglishWordFamiliarity if language == "en" else JapaneseWordFamiliarity
+    for table in (User.__table__, dictionary.__table__, progress.__table__,
+                  (WordStudyFamiliarity if language == "ja" else EnglishStudyFamiliarity).__table__):
+        table.create(engine)
+    with Session(engine) as session:
+        session.add(User(id=DEVELOPMENT_USER_ID, name="new"))
+        words = ([dictionary(headword=f"word{i}", lookup_key=f"word{i}", meaning="meaning", cefr_level=level)
+                  for i, level in enumerate(levels)] if language == "en" else
+                 [dictionary(source_entry_id=i + 1, senses=[], jlpt_level=level) for i, level in enumerate(levels)])
+        session.add_all(words)
+        session.commit()
+        ids = [word.word_id for word in words]
+        app.dependency_overrides[get_db] = lambda: session
+        try:
+            with TestClient(app) as client:
+                assert client.post("/api/profile/onboarding", json={"learning_language": language, "level": "wrong"}).status_code == 422
+                assert client.get("/api/profile").json()["onboarding_required"] is True
+                response = client.post("/api/profile/onboarding", json={"learning_language": language, "level": threshold})
+                assert response.status_code == 200
+                session.expire_all()
+                assert client.get("/api/profile").json() == {"learning_language": language, "onboarding_required": False}
+                assert [session.get(progress, (DEVELOPMENT_USER_ID, word_id)).familiarity_score for word_id in ids[:2]] == [5, 5]
+                assert session.get(progress, (DEVELOPMENT_USER_ID, ids[2])) is None
+                assert client.post("/api/profile/onboarding", json={"learning_language": language, "level": threshold}).status_code == 409
+        finally:
+            app.dependency_overrides.pop(get_db, None)
+    engine.dispose()
+
+
+def test_onboarding_can_skip_marking_words():
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    User.__table__.create(engine)
+    with Session(engine) as session:
+        session.add(User(id=DEVELOPMENT_USER_ID, name="new"))
+        session.commit()
+        app.dependency_overrides[get_db] = lambda: session
+        try:
+            with TestClient(app) as client:
+                assert client.post("/api/profile/onboarding", json={"learning_language": "en", "level": None}).status_code == 200
+                assert client.get("/api/profile").json() == {"learning_language": "en", "onboarding_required": False}
+        finally:
+            app.dependency_overrides.pop(get_db, None)
+    engine.dispose()
+
+
 def test_migration_populates_existing_dictionaries():
     from alembic.migration import MigrationContext
     from alembic.operations import Operations

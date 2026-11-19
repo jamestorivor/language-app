@@ -1,6 +1,10 @@
 import { createContext, useContext, useState } from "react";
 
 export type StudyLanguage = "ja" | "en";
+export const studyLevels: Record<StudyLanguage, readonly string[]> = {
+  ja: ["N5", "N4", "N3", "N2", "N1"],
+  en: ["A1", "A2", "B1", "B2", "C1", "C2"],
+};
 export type StudyLanguageContextValue = {
   language: StudyLanguage;
   chooseLanguage: (value: StudyLanguage) => Promise<boolean>;
