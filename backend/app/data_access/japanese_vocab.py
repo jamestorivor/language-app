@@ -220,6 +220,9 @@ def get_word_details_batch(session: Session, word_tokens: list[GroupToken], user
 
 
 def update_db_familiarity_score(session : Session, user_id : int, word_id : int, new_score : int) :
+    from app.services.study_membership import lock_word_study, refresh_manual_familiarity
+
+    membership = lock_word_study(session, user_id, word_id)
     progress = session.get(JapaneseWordFamiliarity, {"user_id":user_id, "word_id":word_id})
 
     if progress is None:
@@ -228,6 +231,7 @@ def update_db_familiarity_score(session : Session, user_id : int, word_id : int,
     else:
         progress.familiarity_score = new_score
 
+    refresh_manual_familiarity(session, membership, new_score)
     session.commit()
 
     return UpdateFamiliarityScoreResponse(word_id=word_id, new_score=new_score)

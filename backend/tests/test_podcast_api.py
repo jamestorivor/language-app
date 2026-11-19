@@ -496,6 +496,7 @@ def test_vocabulary_empty_and_other_users(client):
 
 def test_english_vocabulary_uses_dictionary_and_saved_ratings(client, monkeypatch):
     from app.db.models.english_vocab import EnglishDictionary, EnglishWordFamiliarity
+    from app.db.models.english_study import EnglishStudyFamiliarity
     from app.services.podcast import vocabulary
     from sqlalchemy import select
 
@@ -507,6 +508,7 @@ def test_english_vocabulary_uses_dictionary_and_saved_ratings(client, monkeypatc
     with next(iter(app.dependency_overrides[get_db]())) as session:
         EnglishDictionary.__table__.create(session.bind)
         EnglishWordFamiliarity.__table__.create(session.bind)
+        EnglishStudyFamiliarity.__table__.create(session.bind)
         session.add_all([EnglishDictionary(word_id=1, headword="word", lookup_key="word", meaning="単語"),
                          EnglishDictionary(word_id=2, headword="go", lookup_key="go", meaning="行く")])
         session.add(EnglishWordFamiliarity(user_id=1, word_id=1, familiarity_score=1))

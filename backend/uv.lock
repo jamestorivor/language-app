@@ -71,6 +71,7 @@ source = { editable = "." }
 dependencies = [
     { name = "en-core-web-sm" },
     { name = "fastapi" },
+    { name = "fsrs" },
     { name = "psycopg", extra = ["binary"] },
     { name = "psycopg2-binary" },
     { name = "pydantic" },
@@ -81,8 +82,9 @@ dependencies = [
     { name = "spacy", version = "3.8.18", source = { url = "https://files.pythonhosted.org/packages/b4/e0/cab3575ad9f8ebe641fd01fc4f5fb03a454fe120c3963ec6f1cbe2384d17/spacy-3.8.18-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl" }, marker = "python_full_version < '3.14' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "spacy", version = "3.8.18", source = { url = "https://files.pythonhosted.org/packages/b7/a1/c279ac1671aef653c2a0db897dbd0145af8b2cf481f0e9164e2633e78dec/spacy-3.8.18-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl" }, marker = "python_full_version == '3.14.*' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "sqlalchemy" },
-    { name = "sudachidict-core" },
+    { name = "sudachidict-full" },
     { name = "sudachipy" },
+    { name = "tzdata" },
 ]
 
 [package.dev-dependencies]
@@ -98,6 +100,7 @@ dev = [
 requires-dist = [
     { name = "en-core-web-sm", path = "vendor/en_core_web_sm-3.8.0-py3-none-any.whl" },
     { name = "fastapi", specifier = ">=0.143.3" },
+    { name = "fsrs", specifier = "==6.3.3" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6" },
     { name = "psycopg2-binary", specifier = ">=2.9.13" },
     { name = "pydantic", specifier = ">=2.14.1" },
@@ -108,8 +111,9 @@ requires-dist = [
     { name = "spacy", marker = "python_full_version == '3.13.*' and platform_machine == 'x86_64' and sys_platform == 'linux'", url = "https://files.pythonhosted.org/packages/b4/e0/cab3575ad9f8ebe641fd01fc4f5fb03a454fe120c3963ec6f1cbe2384d17/spacy-3.8.18-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl" },
     { name = "spacy", marker = "python_full_version == '3.14.*' and platform_machine == 'x86_64' and sys_platform == 'linux'", url = "https://files.pythonhosted.org/packages/b7/a1/c279ac1671aef653c2a0db897dbd0145af8b2cf481f0e9164e2633e78dec/spacy-3.8.18-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl" },
     { name = "sqlalchemy", specifier = ">=2.1.5" },
-    { name = "sudachidict-core", specifier = ">=20261015" },
+    { name = "sudachidict-full", specifier = ">=20261015" },
     { name = "sudachipy", specifier = ">=0.7.0" },
+    { name = "tzdata", specifier = ">=2026.5" },
 ]
 
 [package.metadata.requires-dev]
@@ -572,6 +576,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/51/45/72c2bf5ae3386407009fe51c40e548e41f70181bbe34a6477bb6078be047/fastar-0.12.0-cp315-cp315t-win32.whl", hash = "sha256:39dad3351f1399cd28e2e649b6651299ef857df6c745e598b00b4167dcf93dbc", size = 449932, upload-time = "2026-08-20T09:12:10.589Z" },
     { url = "https://files.pythonhosted.org/packages/7f/74/0adeb47b838c62ebd78bdf11ee2255e6e205ea176f9147978efa022ef855/fastar-0.12.0-cp315-cp315t-win_amd64.whl", hash = "sha256:00cda9a3f11871261a4e77a3b8f0eede85c9730fb7516811bcbcf96a2bb3b75b", size = 482858, upload-time = "2026-08-20T09:11:53.714Z" },
     { url = "https://files.pythonhosted.org/packages/bf/b9/b2ce5a79c57150d36aa8e0514dd65999ea76f091242aba93c403cd20e491/fastar-0.12.0-cp315-cp315t-win_arm64.whl", hash = "sha256:e8e0fb057b5c271f46f3300b539b0d3dab8c8cb2515205a37c818c2f68d16806", size = 458287, upload-time = "2026-08-20T09:11:36.952Z" },
+]
+
+[[package]]
+name = "fsrs"
+version = "6.3.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4e/4d/a18d9850b883977ec445a69464aa0bb852910c98c42e2adabc8e0519ba00/fsrs-6.3.3.tar.gz", hash = "sha256:916ef5c7de96508c9077e1888b9786ef33babb3f59ac3108926cebfcaadccff6", size = 33686, upload-time = "2026-11-13T02:50:57.891Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/54/a9/a3a2a3c423ee08ced77906a2456631a50d10054c27f83fdf415c02198f93/fsrs-6.3.3-py3-none-any.whl", hash = "sha256:0e06323c564fdb429bf65f8d0d3d5ace05b19e005ac080f015dc8631ad3901e2", size = 22926, upload-time = "2026-11-13T02:50:56.901Z" },
 ]
 
 [[package]]
@@ -2032,16 +2048,13 @@ wheels = [
 ]
 
 [[package]]
-name = "sudachidict-core"
+name = "sudachidict-full"
 version = "20261015"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "sudachipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/70/04/4e8698fcb26999fc9381911aea95a4c861e219c098476b784f54a0cd5c36/sudachidict_core-20261015.tar.gz", hash = "sha256:32d2bfc1491b82659959d28f79eb7c034d3a57d77f7610c3d2ea834151d15d23", size = 9157, upload-time = "2026-10-15T08:32:33.402Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3d/6a/9dddc36e33ff7f86e394315a77b90d0f41bfd161e011d77a8397662d53e0/sudachidict_core-20261015-py3-none-any.whl", hash = "sha256:6d7774b518e64c88a0578975d569590b3dae3b3c834f166486aa611879ee9d98", size = 76937301, upload-time = "2026-10-15T08:37:35.957Z" },
-]
+sdist = { url = "https://files.pythonhosted.org/packages/e9/bc/b30da4050cccae8826e8ecc3ade7bc042419548be77148bd6ae788bfc069/sudachidict_full-20261015.tar.gz", hash = "sha256:95ca913091db8a6be42b3c13782a45fb6a5acd9446540d7199ec968c0bf8cdc7", size = 9187, upload-time = "2026-10-15T08:32:34.513Z" }
 
 [[package]]
 name = "sudachipy"

@@ -1,3 +1,4 @@
+import { useLanguage } from "../i18n-context";
 import { useRef, useState, type SubmitEvent } from "react";
 import type { CreateEpisodeRequest, PodcastLanguage } from "../contracts/podcast";
 import { createEpisode } from "../api/podcast";
@@ -7,6 +8,7 @@ import type { PodcastLink } from "../utils/urlParser";
 import TranscriptFileInput from "./TranscriptFileInput";
 import { readTranscriptFile } from "../utils/transcriptFile";
 function AddPodcastCard() {
+  const { t, locale } = useLanguage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [errorMessage, setErrorMessage] = useState("");
@@ -66,18 +68,18 @@ function AddPodcastCard() {
     <>
       <section className="mt-8 w-full max-w-2xl rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
         <h2 className="text-xl font-semibold tracking-tight text-stone-950">
-          Podcast details
+          {t("Podcast details")}
         </h2>
         <p className="mt-2 text-sm leading-6 text-stone-500">
-          Enter a podcast or episode link to get started.
+          {t("Enter a podcast or episode link to get started.")}
         </p>
 
         <form className="mt-6 space-y-5" onSubmit={handleAddButtonClick}>
           <div>
-            <label htmlFor="podcast-language" className="block text-sm font-medium text-stone-700">Podcast language</label>
-            <select id="podcast-language" name="language" defaultValue={(searchParams.get("language") === "en" ? "en" : "ja") satisfies PodcastLanguage}
+            <label htmlFor="podcast-language" className="block text-sm font-medium text-stone-700">{t("Podcast language")}</label>
+            <select key={locale} id="podcast-language" name="language" defaultValue={(searchParams.get("language") === "en" ? "en" : searchParams.get("language") === "ja" ? "ja" : locale === "ja" ? "en" : "ja") satisfies PodcastLanguage}
               className="mt-2 block w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 focus:border-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-200">
-              <option value="ja">Japanese</option>
+              <option value="ja">日本語</option>
               <option value="en">English</option>
             </select>
           </div>
@@ -86,7 +88,7 @@ function AddPodcastCard() {
               htmlFor="podcast-url"
               className="block text-sm font-medium text-stone-700"
             >
-              Podcast link <span className="text-red-600">*</span>
+              {t("Podcast link")} <span className="text-red-600">*</span>
             </label>
             <input
               id="podcast-url"
@@ -99,7 +101,7 @@ function AddPodcastCard() {
               className="mt-2 block w-full rounded-lg border border-stone-300 px-3 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-200"
             />
             <p id="podcast-url-help" className="mt-2 text-sm text-stone-500">
-              Enter a podcast or episode link.
+              {t("Enter a podcast or episode link.")}
             </p>
           </div>
 
@@ -108,15 +110,15 @@ function AddPodcastCard() {
               htmlFor="podcast-title"
               className="block text-sm font-medium text-stone-700"
             >
-              Title{" "}
-              <span className="font-normal text-stone-400">(required)</span>
+              {t("Title")}{" "}
+              <span className="font-normal text-stone-400">{t("(required)")}</span>
             </label>
             <input
               id="podcast-title"
               name="title"
               type="text"
               required
-              placeholder="Give it a name"
+              placeholder={t("Give it a name")}
               className="mt-2 block w-full rounded-lg border border-stone-300 px-3 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-200"
             />
           </div>
@@ -126,15 +128,15 @@ function AddPodcastCard() {
               htmlFor="podcast-creator"
               className="block text-sm font-medium text-stone-700"
             >
-              Creator name{" "}
-              <span className="font-normal text-stone-400">(required)</span>
+              {t("Creator name")}{" "}
+              <span className="font-normal text-stone-400">{t("(required)")}</span>
             </label>
             <input
               id="podcast-creator"
               name="creator"
               type="text"
               required
-              placeholder="Podcast creator"
+              placeholder={t("Podcast creator")}
               className="mt-2 block w-full rounded-lg border border-stone-300 px-3 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-200"
             />
           </div>
@@ -144,7 +146,7 @@ function AddPodcastCard() {
               htmlFor="segment-size"
               className="block text-sm font-medium text-stone-700"
             >
-              Segment size (minutes)
+              {t("Segment size (minutes)")}
             </label>
             <input
               id="segment-size"
@@ -158,12 +160,12 @@ function AddPodcastCard() {
               className="mt-2 block w-full rounded-lg border border-stone-300 px-3 py-2.5 text-sm text-stone-900 focus:border-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-200"
             />
             <p id="segment-size-help" className="mt-2 text-sm text-stone-500">
-              Choose the length of each segment in minutes.
+              {t("Choose the length of each segment in minutes.")}
             </p>
           </div>
 
           <TranscriptFileInput id="add-transcript" />
-          {errorMessage && <p role="alert" className="text-sm text-red-600">{errorMessage}</p>}
+          {errorMessage && <p role="alert" className="text-sm text-red-600">{t(errorMessage)}</p>}
 
           <div>
             <button
@@ -174,7 +176,7 @@ function AddPodcastCard() {
               {isAdding && (
                 <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white motion-reduce:animate-none" />
               )}
-              <span role="status">{isAdding ? "Adding podcast…" : "Add podcast"}</span>
+              <span role="status">{isAdding ? t("Adding podcast…") : t("Add podcast")}</span>
             </button>
           </div>
         </form>

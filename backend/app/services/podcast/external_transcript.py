@@ -17,7 +17,7 @@ def parse_external_transcript(text: str, duration: float, *, require_timestamps:
     if not _TIMESTAMP.match(lines[0]):
         if require_timestamps:
             raise HTTPException(status_code=422, detail="Each transcript line needs a timestamp to update segment times.")
-        return [{"start": 0, "text": text}]
+        return [{"start": 0, "text": text, "timed": False}]
 
     snippets = []
     for line in lines:
@@ -82,7 +82,7 @@ def _parse_subtitles(text: str, duration: float, file_format: str) -> list[dict]
         cue_text = unescape(_CUE_TAG.sub("", "\n".join(cue[timing_index + 1:]))).strip()
         if not cue_text:
             raise HTTPException(status_code=422, detail="A subtitle cue has no text.")
-        snippets.append({"start": start, "text": cue_text})
+        snippets.append({"start": start, "end": min(end, duration), "text": cue_text})
     if not snippets:
         raise HTTPException(status_code=422, detail="The subtitle file has no cues.")
     return snippets

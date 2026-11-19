@@ -12,6 +12,7 @@ from sqlalchemy.pool import StaticPool
 from app.db.import_jap_dictionary import construct_db_objects, parse_entry
 from app.db.models.japanese_vocab import JapaneseDictionary, JapaneseReading, JapaneseSpelling, JapaneseWordFamiliarity
 from app.db.models.user import User
+from app.db.models.study import WordStudyFamiliarity
 from app.db.session import get_db
 from app.main import app
 from app.services.japanese_vocab.grouping import regroup_tokens
@@ -48,6 +49,7 @@ def real_dictionary_session():
     try:
         for model in models:
             model.__table__.create(engine)
+        WordStudyFamiliarity.__table__.create(engine)
         with Session(engine) as session:
             session.add_all([User(id=1, name="Test"), entry])
             session.commit()

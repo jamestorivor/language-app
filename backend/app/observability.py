@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 request_id_context: ContextVar[str | None] = ContextVar("request_id", default=None)
 logger = logging.getLogger("language_app")
@@ -50,7 +51,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                           status=500, duration_ms=round((time.perf_counter() - start) * 1000, 1),
                           error_type=type(exc).__name__,
                           frames=[f"{os.path.basename(frame.filename)}:{frame.lineno}:{frame.name}" for frame in frames])
-                raise
+                # Return through the outer CORS middleware; otherwise Starlette's
+                # server-error handler generates the response outside CORS and
+                # browsers report the backend failure as a misleading CORS error.
+                return JSONResponse({"detail": "Internal Server Error"}, status_code=500,
+                                    headers={"X-Request-ID": request_id})
             response.headers["X-Request-ID"] = request_id
             level = logging.ERROR if response.status_code >= 500 else logging.WARNING if response.status_code >= 400 else logging.INFO
             log_event(level, "request_completed", method=request.method,

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, JSON, String, UniqueConstraint, func, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, JSON, String, UniqueConstraint, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -13,6 +13,7 @@ class PodcastEpisode(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "audio_location", name="uq_podcasts_user_audio"),
         CheckConstraint("language IN ('ja', 'en')", name="valid_podcast_language"),
+        Index("uq_podcasts_id_user", "id", "user_id", unique=True),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -29,6 +30,7 @@ class PodcastEpisode(Base):
 
 class PodcastChunk(Base):
     __tablename__ = "podcast_chunk"
+    __table_args__ = (Index("uq_podcast_chunk_id_episode_user", "id", "podcast_id", "user_id", unique=True),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
@@ -61,6 +63,9 @@ class PodcastTranscript(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     podcast_chunk_id: Mapped[int] = mapped_column(ForeignKey("podcast_chunk.id"), unique=True)
     text: Mapped[str]
+    # Original caption cues retain episode offsets and Unicode text positions.
+    # Older or untimed transcripts have an empty list rather than guessed times.
+    cues: Mapped[list] = mapped_column(JSON, nullable=False, default=list, server_default=text("'[]'"))
 
     podcast_chunk: Mapped["PodcastChunk"] = relationship(back_populates="transcript")
 

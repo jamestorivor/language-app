@@ -1,3 +1,4 @@
+import { useLanguage } from "../i18n-context";
 import { useState } from "react";
 import { API_BASE_URL } from "../api/config";
 import { loggedFetch } from "../api/client";
@@ -9,8 +10,9 @@ const levels: Record<Language, string[]> = {
 };
 
 export default function MarkKnown() {
-  const [language, setLanguage] = useState<Language>("ja");
-  const [level, setLevel] = useState("N5");
+  const { t, locale } = useLanguage();
+  const [language, setLanguage] = useState<Language>(() => locale === "ja" ? "en" : "ja");
+  const [level, setLevel] = useState(() => locale === "ja" ? "A1" : "N5");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -30,7 +32,7 @@ export default function MarkKnown() {
       const result: { matched_words: number } = await response.json();
       setMessage(result.matched_words === 0
         ? "No matching words were found. Make sure the dictionary and level data have been imported."
-        : `Marked ${result.matched_words.toLocaleString()} words as known.`);
+        : t("Marked {count} words as known.", { count: result.matched_words.toLocaleString(locale) }));
     } catch {
       setError("Could not update your words. Please try again.");
     } finally {
@@ -40,14 +42,13 @@ export default function MarkKnown() {
 
   return (
     <section className="mt-6 max-w-3xl rounded-3xl border border-stone-200 bg-white px-6 py-8 shadow-sm sm:px-12">
-      <h2 className="text-xl font-bold tracking-tight text-stone-950">Mark words you already know</h2>
+      <h2 className="text-xl font-bold tracking-tight text-stone-950">{t("Mark words you already know")}</h2>
       <p className="mt-2 text-sm leading-6 text-stone-600">
-        Set words at the selected level and easier levels to 5. This also changes existing ratings for those words.
-        Level lists are approximate and do not cover every word.
+        {t("Set words at the selected level and easier levels to 5. This also changes existing ratings for those words. Level lists are approximate and do not cover every word.")}
       </p>
       <form onSubmit={submit} className="mt-5 flex flex-wrap items-end gap-4">
         <label className="flex flex-col gap-1.5 text-sm font-medium text-stone-700">
-          Language
+          {t("Language")}
           <select value={language} disabled={pending} onChange={(event) => {
             const next = event.target.value as Language;
             setLanguage(next);
@@ -55,22 +56,22 @@ export default function MarkKnown() {
             setMessage("");
             setError("");
           }} className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900">
-            <option value="ja">Japanese</option>
+            <option value="ja">日本語</option>
             <option value="en">English</option>
           </select>
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-stone-700">
-          {language === "ja" ? "JLPT level" : "CEFR level"}
+          {language === "ja" ? t("JLPT level") : t("CEFR level")}
           <select value={level} disabled={pending} onChange={(event) => { setLevel(event.target.value); setMessage(""); setError(""); }} className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900">
             {levels[language].map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
         </label>
         <button disabled={pending} className="rounded-lg bg-emerald-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">
-          {pending ? "Updating…" : "Mark as known"}
+          {pending ? t("Updating…") : t("Mark as known")}
         </button>
       </form>
-      {message && <p role="status" className="mt-4 text-sm text-emerald-800">{message}</p>}
-      {error && <p role="alert" className="mt-4 text-sm text-red-700">{error}</p>}
+      {message && <p role="status" className="mt-4 text-sm text-emerald-800">{t(message)}</p>}
+      {error && <p role="alert" className="mt-4 text-sm text-red-700">{t(error)}</p>}
     </section>
   );
 }

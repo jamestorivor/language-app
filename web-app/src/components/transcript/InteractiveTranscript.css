@@ -57,3 +57,42 @@
   pointer-events: none;
   clip-path: polygon(0 0, 100% 0, 0 100%);
 }
+.transcript-context-sentence {
+  background: #fef3c7;
+  box-shadow: 0 0 0 2px #fef3c7;
+  animation: context-sentence-fade 2s ease-in 1s forwards;
+}
+
+.transcript-context-target {
+  color: #064e3b;
+  background: #a7f3d0;
+  border-radius: 0.2rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  animation: context-target-fade 2s ease-in 1s forwards;
+}
+
+@keyframes context-sentence-fade {
+  to {
+    background-color: transparent;
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+
+@keyframes context-target-fade {
+  to {
+    color: inherit;
+    background-color: transparent;
+    font-weight: inherit;
+    text-decoration-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transcript-context-sentence,
+  .transcript-context-target {
+    animation-duration: 0.01ms;
+    animation-delay: 3s;
+  }
+}

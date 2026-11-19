@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import english_vocab, japanese_vocab, podcast, vocabulary_levels
+from app.api import english_vocab, japanese_vocab, podcast, study, vocabulary_levels
 from app.observability import RequestLoggingMiddleware
 
 app = FastAPI()
@@ -10,10 +10,12 @@ app.include_router(japanese_vocab.router)
 app.include_router(english_vocab.router)
 app.include_router(podcast.router)
 app.include_router(vocabulary_levels.router)
+app.include_router(study.router)
 app.include_router(japanese_vocab.router, prefix="/api")
 app.include_router(english_vocab.router, prefix="/api")
 app.include_router(podcast.router, prefix="/api")
 app.include_router(vocabulary_levels.router, prefix="/api")
+app.include_router(study.router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,

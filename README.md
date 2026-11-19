@@ -76,8 +76,9 @@ To change a podcast's segment length, open its segments page and select **Edit
 podcast details**. Enter a new length in minutes and save. The app rebuilds all
 segments; existing segment links may change. If the podcast has transcript text,
 upload a timestamped UTF-8 `.txt` transcript (one timestamped line per entry),
-or select current YouTube captions for a YouTube episode. Existing segment
-transcript text does not retain the timestamps needed to redistribute it.
+or select current YouTube captions for a YouTube episode. Transcripts saved
+before caption timings were preserved do not have the timestamps needed for
+precise navigation or redistribution.
 
 ### Podcast vocabulary coverage
 
@@ -104,7 +105,8 @@ installation. Development tools, including Alembic and pytest, are installed
 with the default `uv sync` but excluded from production dependencies.
 The Linux spaCy wheels are pinned as direct sources so Vercel bundles the
 stripped package instead of downloading the full wheel during a cold start.
-This leaves enough temporary disk space to install Sudachi's core dictionary.
+The application uses Sudachi's full dictionary, which requires more disk space
+than the core dictionary during installation.
 When upgrading spaCy, update its version and Linux wheel URLs together, then
 regenerate `backend/uv.lock`.
 
@@ -129,6 +131,50 @@ which uses JMdict and KANJIDIC2 (EDRDG), Jonathan Waller's JLPT lists, and
 Tatoeba; it is distributed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
 See `backend/app/data/openjlpt-NOTICE.md` and `openjlpt-LICENSE` for attribution
 and license details. The mapping retains JMdict IDs and the easiest listed level.
+
+## Sentence study
+
+Select a Japanese word in a podcast transcript and choose **Add to Study** to
+save its sentence as a study card. Different sentences for the same word have
+independent cards and FSRS schedules. Opening words, looking up definitions, changing ratings,
+and marking vocabulary known by level do not add cards. If the word was marked
+“Won’t learn,” adding it clears that status and leaves it unrated; other
+familiarity ratings are unchanged by adding. Review grades are separate from
+the familiarity scale.
+
+Reviews can automatically advance familiarity: the first successful recall
+advances level 1 to 2; level 2 advances after successful recalls on three UTC
+dates and at least seven days of stability; level 3 advances after five UTC
+dates and at least 30 days of stability. Hard, Good and Easy count as successful
+recalls. Again lowers levels 3–4 to 2, or level 2 to 1. Explicit familiarity
+choices remain recorded separately and can be changed at any time; later
+reviews can update the effective level. Level 5 is only set manually.
+
+Levels 1–2 use FSRS's retention scheduling (90% by default). Study settings
+let you change the retention target, maximum FSRS interval and review spreading.
+Changes apply at each card's next review; existing due dates remain unchanged.
+Once a card at level 3 or 4
+reaches the review phase, its next review becomes eligible when FSRS predicts
+80% recall, which can be later than the maximum FSRS interval; learning and
+relearning steps retain their usual timing. Level 5
+and “Won’t learn” suspend automatic reviews until familiarity is changed.
+Removing a card from study keeps its schedule, history and occurrence for a
+later explicit re-add. Familiarity is shared by a word's cards, while each
+card retains its own schedule and review history.
+
+Existing installations need `uv sync` and `uv run alembic upgrade head` from
+`backend` before using study. A saved sentence keeps its text and selected word
+even if the transcript is later edited or the card is removed from Study.
+Open its source from the answer or the Study List; the Removed filter provides
+access to removed cards without re-enrolling them. You can switch between
+saved sentences for the same word. Newly imported timestamped captions retain
+cue times: YouTube context playback starts at the first relevant cue, which
+can cover more than the selected sentence. Older or untimed transcripts show
+an unavailable timestamp instead of an estimate. Refreshing YouTube captions
+or replacing a transcript with timestamped text may restore navigation when
+the saved sentence can be matched unambiguously. Playback in the app currently
+supports YouTube only. As with the rest of the app, study uses the fixed
+development user.
 
 The English mapping is derived from [Open Language Profiles](https://github.com/vitwits/english-wordlist-cefr-a1-c2):
 The CEFR-J Wordlist Version 1.5, compiled by Yukio Tono, Tokyo University of

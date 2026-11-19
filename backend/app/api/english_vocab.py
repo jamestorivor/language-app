@@ -6,6 +6,7 @@ from app.db.models.english_vocab import EnglishDictionary, EnglishWordFamiliarit
 from app.db.session import get_db
 from app.schemas import GroupToken, ParseJapaneseRequest, UpdateFamiliarityScoreRequest, UpdateFamiliarityScoreResponse
 from app.services.english_vocab import parse_english_text
+from app.services.study_membership import lock_word_study, refresh_manual_familiarity
 
 router = APIRouter()
 
@@ -19,6 +20,7 @@ def parse_english(request: ParseJapaneseRequest, db: Session = Depends(get_db)):
 def update_english_familiarity(request: UpdateFamiliarityScoreRequest, db: Session = Depends(get_db)):
     if db.get(EnglishDictionary, request.word_id) is None:
         raise HTTPException(status_code=404, detail="English word not found")
+    membership = lock_word_study(db, DEVELOPMENT_USER_ID, request.word_id, "en")
     key = (DEVELOPMENT_USER_ID, request.word_id)
     progress = db.get(EnglishWordFamiliarity, key)
     if progress is None:
@@ -26,5 +28,6 @@ def update_english_familiarity(request: UpdateFamiliarityScoreRequest, db: Sessi
         db.add(progress)
     else:
         progress.familiarity_score = request.new_score
+    refresh_manual_familiarity(db, membership, request.new_score)
     db.commit()
     return UpdateFamiliarityScoreResponse(word_id=request.word_id, new_score=request.new_score)

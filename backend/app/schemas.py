@@ -350,6 +350,7 @@ class PodcastTranscriptResponse(PodcastTranscriptCreate):
     model_config = {"from_attributes": True}
     id: int
     podcast_chunk_id: int
+    cues: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class PodcastChunkResponse(PodcastChunkCreate):

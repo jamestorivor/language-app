@@ -15,6 +15,8 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.db.vocabulary_levels import english_levels, japanese_levels
 from app.main import app
+from app.db.models.study import WordStudyFamiliarity, StudyMembership, WordStudySchedule
+from app.db.models.english_study import EnglishStudyFamiliarity
 
 
 @compiles(JSONB, "sqlite")
@@ -45,6 +47,7 @@ def test_mark_known_includes_threshold_and_preserves_other_words(language, level
     progress = EnglishWordFamiliarity if language == "en" else JapaneseWordFamiliarity
     for table in (User.__table__, dictionary.__table__, progress.__table__):
         table.create(engine)
+    (WordStudyFamiliarity if language == "ja" else EnglishStudyFamiliarity).__table__.create(engine)
     with Session(engine) as session:
         session.add(User(id=DEVELOPMENT_USER_ID, name="test"))
         if language == "en":

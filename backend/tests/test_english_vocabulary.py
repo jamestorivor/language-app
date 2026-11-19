@@ -5,6 +5,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.db.import_english_dictionary import import_entries, read_entries
 from app.db.models.english_vocab import EnglishDictionary, EnglishWordFamiliarity
+from app.db.models.english_study import EnglishStudyFamiliarity
 from app.db.models.user import User
 from app.db.session import get_db
 from app.main import app
@@ -42,6 +43,7 @@ def test_english_parsing_and_familiarity_endpoints():
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     for table in (User.__table__, EnglishDictionary.__table__, EnglishWordFamiliarity.__table__):
         table.create(engine)
+    EnglishStudyFamiliarity.__table__.create(engine)
     with Session(engine) as session:
         session.add(User(id=1, name="test"))
         import_entries(session, {"go": "行く", "word": "単語", "New York": "ニューヨーク"})

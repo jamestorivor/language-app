@@ -2,7 +2,7 @@ from sudachipy import Dictionary, SplitMode
 from app.schemas import JapaneseTokenizedResponse
 import unicodedata
 
-jap_dict = Dictionary(dict="core")
+jap_dict = Dictionary(dict="full")
 SPLIT_MODE = SplitMode.B
 
 def parse_japanese_text(text: str) -> list[dict]:

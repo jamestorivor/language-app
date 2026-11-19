@@ -1,4 +1,5 @@
-from math import ceil
+from math import ceil, isfinite
+from uuid import uuid4
 
 from fastapi import HTTPException
 from sqlalchemy import delete, select
@@ -7,6 +8,35 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.db.models.podcast import PodcastChunk, PodcastEpisode, PodcastTranscript
 from app.services.podcast.vocabulary import reset_baseline
+
+
+def _transcript_data(snippets: list[dict]) -> tuple[str, list[dict]]:
+    """Join source cues while retaining their exact code-point spans and times."""
+    parts: list[str] = []
+    cues: list[dict] = []
+    offset = 0
+    for snippet in snippets:
+        value = snippet["text"]
+        if parts:
+            offset += 1
+        start_idx = offset
+        offset += len(value)
+        parts.append(value)
+        if snippet.get("timed", True) is False:
+            continue
+        start = snippet.get("start")
+        if isinstance(start, bool) or not isinstance(start, (int, float)) or not isfinite(start) or start < 0:
+            continue
+        end = snippet.get("end")
+        if end is None:
+            duration = snippet.get("duration")
+            if not isinstance(duration, bool) and isinstance(duration, (int, float)) and isfinite(duration) and duration > 0:
+                end = start + duration
+        if isinstance(end, bool) or not isinstance(end, (int, float)) or not isfinite(end) or end <= start:
+            end = None
+        cues.append({"id": str(uuid4()), "start_idx": start_idx, "end_idx": offset,
+                     "start_ms": round(start * 1000), "end_ms": round(end * 1000) if end is not None else None})
+    return " ".join(parts), cues
 
 
 def get_episode_by_audio_location(session: Session, user_id: int, audio_location: str):
@@ -24,18 +54,19 @@ def add_episode(session: Session, user_id: int, audio_location: str, title: str,
     try:
         session.flush()
         chunk_count = ceil(duration / chunk_interval)
-        chunk_texts: list[list[str]] = [[] for _ in range(chunk_count)]
+        chunk_texts: list[list[dict]] = [[] for _ in range(chunk_count)]
         if transcript is not None:
             for snippet in transcript:
                 start = snippet["start"]
                 if 0 <= start < duration:
-                    chunk_texts[int(start // chunk_interval)].append(snippet["text"])
+                    chunk_texts[int(start // chunk_interval)].append(snippet)
         for index in range(chunk_count):
             start = index * chunk_interval
             end = min((index + 1) * chunk_interval, duration)
             chunk = PodcastChunk(user_id=user_id, podcast_id=episode.id, start_time=start, end_time=end)
             if transcript is not None:
-                chunk.transcript = PodcastTranscript(text=" ".join(chunk_texts[index]))
+                joined, cues = _transcript_data(chunk_texts[index])
+                chunk.transcript = PodcastTranscript(text=joined, cues=cues)
             session.add(chunk)
 
         if transcript and any(item["text"].strip() for item in transcript):
@@ -94,23 +125,25 @@ def replace_episode_transcript(session: Session, user_id: int, episode_id: int, 
         if not matching:
             raise HTTPException(status_code=422, detail="A transcript timestamp does not belong to an existing segment.")
         for index in matching:
-            chunk_texts[index].append(snippet["text"])
+            chunk_texts[index].append(snippet)
     for chunk, texts in zip(chunks, chunk_texts):
+        joined, cues = _transcript_data(texts)
         if chunk.transcript is None:
-            chunk.transcript = PodcastTranscript(text=" ".join(texts))
+            chunk.transcript = PodcastTranscript(text=joined, cues=cues)
         else:
-            chunk.transcript.text = " ".join(texts)
+            chunk.transcript.text = joined
+            chunk.transcript.cues = cues
 
 
 def rebuild_chunks(session: Session, episode: PodcastEpisode, interval: float, snippets: list[dict] | None):
     chunks = list_chunks(session, episode.user_id, episode.id)
     count = ceil(episode.duration / interval)
-    texts: list[list[str]] = [[] for _ in range(count)]
+    texts: list[list[dict]] = [[] for _ in range(count)]
     if snippets is not None:
         for snippet in snippets:
             start = snippet["start"]
             if 0 <= start < episode.duration:
-                texts[int(start // interval)].append(snippet["text"])
+                texts[int(start // interval)].append(snippet)
     for chunk in chunks:
         session.delete(chunk)
     # Delete first so no old transcript or segment survives the replacement.
@@ -119,14 +152,17 @@ def rebuild_chunks(session: Session, episode: PodcastEpisode, interval: float, s
         chunk = PodcastChunk(user_id=episode.user_id, podcast_id=episode.id,
                              start_time=index * interval, end_time=min((index + 1) * interval, episode.duration))
         if snippets is not None:
-            chunk.transcript = PodcastTranscript(text=" ".join(texts[index]))
+            joined, cues = _transcript_data(texts[index])
+            chunk.transcript = PodcastTranscript(text=joined, cues=cues)
         session.add(chunk)
 
 
 def save_transcript(session: Session, chunk: PodcastChunk, text: str):
     if chunk.transcript is None:
-        chunk.transcript = PodcastTranscript(text=text)
+        chunk.transcript = PodcastTranscript(text=text, cues=[])
     else:
+        if chunk.transcript.text != text:
+            chunk.transcript.cues = []
         chunk.transcript.text = text
     session.flush()
     chunks = list_chunks(session, chunk.user_id, chunk.podcast_id)

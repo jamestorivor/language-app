@@ -1,3 +1,4 @@
+import { useLanguage } from "../i18n-context";
 import type { VocabularyComparison, VocabularyEstimate } from "../contracts/podcast";
 
 function formatRange(low: number, high: number) {
@@ -6,13 +7,14 @@ function formatRange(low: number, high: number) {
   return `${format(low)}–${format(high)}`;
 }
 
-function formatDate(value: string | null | undefined) {
+function formatDate(value: string | null | undefined, locale: string) {
   if (!value) return null;
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString(undefined, { dateStyle: "medium" });
+  return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString(locale, { dateStyle: "medium" });
 }
 
 function CoverageRing({ estimate, compact = false }: { estimate: VocabularyEstimate; compact?: boolean }) {
+  const { t } = useLanguage();
   const low = Math.max(0, Math.min(100, estimate.coverage_low));
   const high = Math.max(low, Math.min(100, estimate.coverage_high));
   return (
@@ -24,14 +26,15 @@ function CoverageRing({ estimate, compact = false }: { estimate: VocabularyEstim
       </svg>
       {!compact && <span className="absolute max-w-[70%] text-center">
         <span className="block text-lg font-bold tracking-tight tabular-nums text-stone-900 sm:text-xl">{formatRange(low, high)}</span>
-        <span className="mt-0.5 block text-xs text-stone-500">% of groups</span>
+        <span className="mt-0.5 block text-xs text-stone-500">{t("% of groups")}</span>
       </span>}
     </span>
   );
 }
 
 function DateAdded({ value }: { value?: string | null }) {
-  return <p className="text-sm text-stone-500"><span className="font-medium text-stone-600">Date added</span> · {formatDate(value) ?? "Not recorded"}</p>;
+  const { t, locale } = useLanguage();
+  return <p className="text-sm text-stone-500"><span className="font-medium text-stone-600">{t("Date added")}</span> · {formatDate(value, locale) ?? t("Not recorded")}</p>;
 }
 
 export default function VocabularySummary({ comparison, baselineAt, addedAt, compact = false, segmentsWithText, segmentCount }: {
@@ -42,47 +45,48 @@ export default function VocabularySummary({ comparison, baselineAt, addedAt, com
   segmentsWithText?: number;
   segmentCount?: number;
 }) {
+  const { t, locale } = useLanguage();
   const current = comparison?.current;
   if (compact) {
     if (!current) return null;
     return <span className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg bg-stone-100/80 px-2 py-1 text-xs text-stone-600">
       <CoverageRing estimate={current} compact />
-      <span>Vocabulary coverage <strong className="font-semibold tabular-nums text-stone-800">{formatRange(current.coverage_low, current.coverage_high)}%</strong></span>
+      <span>{t("Vocabulary coverage")} <strong className="font-semibold tabular-nums text-stone-800">{formatRange(current.coverage_low, current.coverage_high)}%</strong></span>
     </span>;
   }
 
   const before = comparison?.baseline;
   return (
-    <section aria-label="Vocabulary estimate" className="rounded-2xl border border-stone-200 bg-white p-5 text-left shadow-sm sm:p-6">
+    <section aria-label={t("Vocabulary estimate")} className="rounded-2xl border border-stone-200 bg-white p-5 text-left shadow-sm sm:p-6">
       {current ? <div className="flex flex-wrap items-center gap-x-7 gap-y-4">
         <CoverageRing estimate={current} />
         <div className="min-w-[11rem] flex-1">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">Vocabulary</p>
-          <h2 className="mt-1 text-xl font-semibold tracking-tight text-stone-900">Estimated vocabulary coverage</h2>
-          <p className="mt-1 text-sm text-stone-500">Provisionally known to possibly known</p>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">{t("Vocabulary")}</p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-stone-900">{t("Estimated vocabulary coverage")}</h2>
+          <p className="mt-1 text-sm text-stone-500">{t("Provisionally known to possibly known")}</p>
           <div className="mt-4"><DateAdded value={addedAt} /></div>
         </div>
       </div> : <div>
-        <h2 className="text-lg font-semibold text-stone-900">Vocabulary estimate</h2>
-        <p className="mt-2 text-sm text-stone-500">No estimate available for this transcript.</p>
+        <h2 className="text-lg font-semibold text-stone-900">{t("Vocabulary estimate")}</h2>
+        <p className="mt-2 text-sm text-stone-500">{t("No estimate available for this transcript.")}</p>
         <div className="mt-3"><DateAdded value={addedAt} /></div>
       </div>}
       {current && <details className="mt-5 border-t border-stone-100 pt-4 text-sm text-stone-600">
-        <summary className="w-fit cursor-pointer font-semibold text-emerald-800 hover:text-emerald-950">About this estimate</summary>
-        <p className="mt-3 leading-relaxed">Green counts occurrences of dictionary groups rated 3–5 as provisionally known. Amber represents groups rated 1–2, unrated groups, and unmatched groups: you may know some of these too. Words marked “Won’t learn” are counted as unrated. The range shows both possibilities, rather than a confidence interval.</p>
+        <summary className="w-fit cursor-pointer font-semibold text-emerald-800 hover:text-emerald-950">{t("About this estimate")}</summary>
+        <p className="mt-3 leading-relaxed">{t("Green counts occurrences of dictionary groups rated 3–5 as provisionally known. Amber represents groups rated 1–2, unrated groups, and unmatched groups: you may know some of these too. Words marked “Won’t learn” are counted as unrated. The range shows both possibilities, rather than a confidence interval.")}</p>
         <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-          <div><dt className="text-stone-500">Provisionally known occurrences <span className="text-xs">(rated 3–5)</span></dt><dd className="font-semibold tabular-nums text-stone-800">{current.known_occurrences} of {current.coverage_occurrences}</dd></div>
-          <div><dt className="text-stone-500">Uncertain occurrences</dt><dd className="font-semibold tabular-nums text-stone-800">{current.uncertain_occurrences}</dd></div>
-          <div><dt className="text-stone-500">Uncertain rated words <span className="text-xs">(rated 1–2)</span></dt><dd className="font-semibold tabular-nums text-stone-800">{current.uncertain_rated_unique}</dd></div>
-          <div><dt className="text-stone-500">Unrated words</dt><dd className="font-semibold tabular-nums text-stone-800">{current.unrated_unique}</dd></div>
-          <div><dt className="text-stone-500">Rated occurrences</dt><dd className="font-semibold tabular-nums text-stone-800">{current.rated_percent}% of {current.matched_occurrences}</dd></div>
-          <div><dt className="text-stone-500">Dictionary matches</dt><dd className="font-semibold tabular-nums text-stone-800">{current.dictionary_match_percent}% · {current.unmatched_groups} unmatched</dd></div>
-          <div><dt className="text-stone-500">Weighted familiarity <span className="text-xs">(previous method, updated group count)</span></dt><dd className="font-semibold tabular-nums text-stone-800">{formatRange(current.familiarity_low, current.familiarity_high)} / 100</dd></div>
-          {before && <div><dt className="text-stone-500">Baseline coverage{formatDate(baselineAt) ? ` · ${formatDate(baselineAt)}` : ""}</dt><dd className="font-semibold tabular-nums text-stone-800">{formatRange(before.coverage_low, before.coverage_high)}%</dd></div>}
+          <div><dt className="text-stone-500">{t("Provisionally known occurrences")} <span className="text-xs">{t("(rated 3–5)")}</span></dt><dd className="font-semibold tabular-nums text-stone-800">{t("{known} of {total}", { known: current.known_occurrences, total: current.coverage_occurrences })}</dd></div>
+          <div><dt className="text-stone-500">{t("Uncertain occurrences")}</dt><dd className="font-semibold tabular-nums text-stone-800">{current.uncertain_occurrences}</dd></div>
+          <div><dt className="text-stone-500">{t("Uncertain rated words")} <span className="text-xs">{t("(rated 1–2)")}</span></dt><dd className="font-semibold tabular-nums text-stone-800">{current.uncertain_rated_unique}</dd></div>
+          <div><dt className="text-stone-500">{t("Unrated words")}</dt><dd className="font-semibold tabular-nums text-stone-800">{current.unrated_unique}</dd></div>
+          <div><dt className="text-stone-500">{t("Rated occurrences")}</dt><dd className="font-semibold tabular-nums text-stone-800">{t("{percent}% of {total}", { percent: current.rated_percent, total: current.matched_occurrences })}</dd></div>
+          <div><dt className="text-stone-500">{t("Dictionary matches")}</dt><dd className="font-semibold tabular-nums text-stone-800">{current.dictionary_match_percent}% · {t("{count} unmatched", { count: current.unmatched_groups })}</dd></div>
+          <div><dt className="text-stone-500">{t("Weighted familiarity")} <span className="text-xs">{t("(previous method, updated group count)")}</span></dt><dd className="font-semibold tabular-nums text-stone-800">{formatRange(current.familiarity_low, current.familiarity_high)} / 100</dd></div>
+          {before && <div><dt className="text-stone-500">{t("Baseline coverage")}{formatDate(baselineAt, locale) ? ` · ${formatDate(baselineAt, locale)}` : ""}</dt><dd className="font-semibold tabular-nums text-stone-800">{formatRange(before.coverage_low, before.coverage_high)}%</dd></div>}
         </dl>
-        {before && <p className="mt-4">Since the baseline: {comparison.improved_unique} ratings increased, {comparison.declined_unique} decreased, and {comparison.newly_rated_unique} words were newly rated.</p>}
-        {segmentsWithText !== undefined && segmentCount !== undefined && segmentsWithText < segmentCount && <p className="mt-2">The estimate covers {segmentsWithText} of {segmentCount} segments with transcript text.</p>}
-        <p className="mt-2 leading-relaxed">Groups can contain more than one word, and grouping differs between languages, so this is not directly comparable to published word-coverage figures or across languages. Ratings do not guarantee understanding in context or in speech. The estimate does not measure grammar or listening comprehension. Rating changes may reflect knowledge you already had or learned elsewhere.</p>
+        {before && <p className="mt-4">{t("Since the baseline: {improved} ratings increased, {declined} decreased, and {newly} words were newly rated.", { improved: comparison.improved_unique, declined: comparison.declined_unique, newly: comparison.newly_rated_unique })}</p>}
+        {segmentsWithText !== undefined && segmentCount !== undefined && segmentsWithText < segmentCount && <p className="mt-2">{t("The estimate covers {count} of {total} segments with transcript text.", { count: segmentsWithText, total: segmentCount })}</p>}
+        <p className="mt-2 leading-relaxed">{t("Groups can contain more than one word, and grouping differs between languages, so this is not directly comparable to published word-coverage figures or across languages. Ratings do not guarantee understanding in context or in speech. The estimate does not measure grammar or listening comprehension. Rating changes may reflect knowledge you already had or learned elsewhere.")}</p>
       </details>}
     </section>
   );

@@ -2,7 +2,7 @@ from logging.config import fileConfig
 
 from alembic import context
 from app.db.session import Base, engine
-from app.db.models import english_vocab, japanese_vocab, podcast, user
+from app.db.models import english_study, english_vocab, japanese_vocab, podcast, study, user
 
 target_metadata = Base.metadata
 

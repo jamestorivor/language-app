@@ -1,3 +1,4 @@
+import { useLanguage } from "../i18n-context";
 import { useEffect, useRef, useState } from "react";
 import { formatTime } from "../utils/formatTime";
 
@@ -73,6 +74,7 @@ export default function YouTubeSegmentPlayer({
   title,
   isPinned,
   onPlaybackStart,
+  contextTime,
 }: {
   videoId: string;
   startTime: number;
@@ -80,13 +82,20 @@ export default function YouTubeSegmentPlayer({
   title: string;
   isPinned: boolean;
   onPlaybackStart: () => void;
+  contextTime?: { startMs: number; endMs: number | null } | null;
 }) {
+  const { t } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<Player | null>(null);
+  const playbackEndRef = useRef<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(startTime);
+  const contextStart = contextTime ? contextTime.startMs / 1000 : null;
+  const contextEnd = contextTime?.endMs != null ? contextTime.endMs / 1000 : null;
+  // A caption that begins in this segment may end in the next one.
+  const cueEnd = Math.max(endTime, contextEnd ?? endTime);
 
   useEffect(() => {
     const lifecycle = new AbortController();
@@ -99,8 +108,8 @@ export default function YouTubeSegmentPlayer({
     const cueSegment = (target: Player) => {
       target.cueVideoById({
         videoId,
-        startSeconds: startTime,
-        endSeconds: endTime,
+        startSeconds: contextStart ?? startTime,
+        endSeconds: cueEnd,
       });
     };
 
@@ -117,6 +126,7 @@ export default function YouTubeSegmentPlayer({
               if (lifecycle.signal.aborted) return;
               playerRef.current = target;
               cueSegment(target);
+              setCurrentTime(contextStart ?? startTime);
               setReady(true);
               timer = window.setInterval(() => {
                 const state = target.getPlayerState();
@@ -124,12 +134,15 @@ export default function YouTubeSegmentPlayer({
                 const time = target.getCurrentTime();
                 const now = Date.now();
                 if (!Number.isFinite(time)) return;
-                setCurrentTime(Math.min(endTime, Math.max(startTime, time)));
-                if (time >= endTime) {
+                setCurrentTime(Math.min(cueEnd, Math.max(startTime, time)));
+                if (playbackEndRef.current !== null && time >= playbackEndRef.current) {
+                  playbackEndRef.current = null;
+                  target.pauseVideo();
+                } else if (time >= endTime && playbackEndRef.current === null) {
                   lastCorrection = now;
                   target.pauseVideo();
                   cueSegment(target);
-                  setCurrentTime(startTime);
+                  setCurrentTime(contextStart ?? startTime);
                 } else if (
                   time < startTime - 2 &&
                   now - lastCorrection >= 1500
@@ -146,7 +159,7 @@ export default function YouTubeSegmentPlayer({
               if (data === 1) onPlaybackStart();
               if (data === 0) {
                 cueSegment(target);
-                setCurrentTime(startTime);
+                setCurrentTime(contextStart ?? startTime);
               }
             },
             onError: () => {
@@ -170,21 +183,23 @@ export default function YouTubeSegmentPlayer({
       lifecycle.abort();
       if (timer !== undefined) window.clearInterval(timer);
       playerRef.current = null;
+      playbackEndRef.current = null;
       player?.destroy();
       container.replaceChildren();
     };
-  }, [videoId, startTime, endTime, onPlaybackStart]);
+  }, [videoId, startTime, endTime, onPlaybackStart, contextStart, cueEnd]);
 
   const skip = (seconds: number) => {
     const player = playerRef.current;
     if (!player) return;
+    playbackEndRef.current = null;
     const current = player.getCurrentTime();
     if (!Number.isFinite(current)) return;
     const position = Math.max(startTime, Math.min(endTime, current));
     const next = Math.max(startTime, Math.min(endTime, position + seconds));
     if (next >= endTime) {
       player.pauseVideo();
-      player.cueVideoById({ videoId, startSeconds: startTime, endSeconds: endTime });
+      player.cueVideoById({ videoId, startSeconds: startTime, endSeconds: cueEnd });
       setCurrentTime(startTime);
       return;
     }
@@ -192,6 +207,15 @@ export default function YouTubeSegmentPlayer({
     player.seekTo(next, true);
     if (!wasPlaying) player.pauseVideo();
     setCurrentTime(next);
+  };
+
+  const playContext = () => {
+    const player = playerRef.current;
+    if (!player || contextStart === null) return;
+    playbackEndRef.current = contextEnd;
+    player.seekTo(contextStart, true);
+    player.playVideo();
+    setCurrentTime(contextStart);
   };
 
   return (
@@ -203,31 +227,35 @@ export default function YouTubeSegmentPlayer({
       />
       {error && (
         <p role="alert" className="mt-3 text-sm text-red-700">
-          {error}
+          {t(error)}
         </p>
       )}
+      {contextStart !== null && <button type="button" disabled={!ready} onClick={playContext}
+        className="mt-3 rounded-lg border border-emerald-800 px-4 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:opacity-50">
+        {contextEnd === null ? t("Play from this caption") : t("Play or replay caption")}
+      </button>}
       {!isPinned && <div
         role="region"
-        aria-label="Playback controls"
+        aria-label={t("Playback controls")}
         className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white/95 px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(28,25,23,0.08)] backdrop-blur sm:hidden"
       >
         <div className="mx-auto max-w-xl">
           <div className="flex items-center justify-between gap-4 text-xs font-medium tabular-nums text-stone-500">
             <span className="min-w-0 truncate text-stone-700">{title}</span>
-            <span className="shrink-0">{formatTime(currentTime)} / {formatTime(endTime)}</span>
+            <span className="shrink-0">{formatTime(currentTime)} / {formatTime(cueEnd)}</span>
           </div>
           <div className="mt-3 flex items-center justify-center gap-7">
-            <button type="button" disabled={!ready} onClick={() => skip(-SKIP_SECONDS)} aria-label={`Back ${SKIP_SECONDS} seconds`} className="flex h-11 min-w-11 items-center justify-center rounded-full text-sm font-bold text-stone-700 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:opacity-40">
+            <button type="button" disabled={!ready} onClick={() => skip(-SKIP_SECONDS)} aria-label={t("Back {seconds} seconds", { seconds: SKIP_SECONDS })} className="flex h-11 min-w-11 items-center justify-center rounded-full text-sm font-bold text-stone-700 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:opacity-40">
               −{SKIP_SECONDS}s
             </button>
-            <button type="button" disabled={!ready} onClick={() => playing ? playerRef.current?.pauseVideo() : playerRef.current?.playVideo()} aria-label={playing ? "Pause" : "Play"} className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-900 text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:opacity-40">
+            <button type="button" disabled={!ready} onClick={() => playing ? playerRef.current?.pauseVideo() : playerRef.current?.playVideo()} aria-label={playing ? t("Pause") : t("Play")} className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-900 text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:opacity-40">
               {playing ? (
                 <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-current"><path d="M6 4h4v16H6zm8 0h4v16h-4z" /></svg>
               ) : (
                 <svg aria-hidden="true" viewBox="0 0 24 24" className="ml-0.5 h-5 w-5 fill-current"><path d="M6 3.5v17L19 12z" /></svg>
               )}
             </button>
-            <button type="button" disabled={!ready} onClick={() => skip(SKIP_SECONDS)} aria-label={`Forward ${SKIP_SECONDS} seconds`} className="flex h-11 min-w-11 items-center justify-center rounded-full text-sm font-bold text-stone-700 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:opacity-40">
+            <button type="button" disabled={!ready} onClick={() => skip(SKIP_SECONDS)} aria-label={t("Forward {seconds} seconds", { seconds: SKIP_SECONDS })} className="flex h-11 min-w-11 items-center justify-center rounded-full text-sm font-bold text-stone-700 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:opacity-40">
               +{SKIP_SECONDS}s
             </button>
           </div>

@@ -11,6 +11,9 @@ from app.config import DEVELOPMENT_USER_ID
 from app.db.models.english_vocab import EnglishDictionary, EnglishWordFamiliarity
 from app.db.models.japanese_vocab import JapaneseDictionary, JapaneseWordFamiliarity
 from app.db.session import get_db
+from app.db.models.study import WordStudyFamiliarity
+from app.db.models.english_study import EnglishStudyFamiliarity
+from app.services.study_membership import refresh_manual_familiarity
 
 router = APIRouter()
 LEVELS = {"ja": ("N5", "N4", "N3", "N2", "N1"),
@@ -36,6 +39,11 @@ def mark_known(request: MarkKnownRequest, db: Session = Depends(get_db)):
         dictionary, progress, level_column = JapaneseDictionary, JapaneseWordFamiliarity, JapaneseDictionary.jlpt_level
     else:
         dictionary, progress, level_column = EnglishDictionary, EnglishWordFamiliarity, EnglishDictionary.cefr_level
+    study_familiarity = WordStudyFamiliarity if request.language == "ja" else EnglishStudyFamiliarity
+    memberships = db.scalars(select(study_familiarity).join(
+        dictionary, study_familiarity.word_id == dictionary.word_id
+    ).where(study_familiarity.user_id == DEVELOPMENT_USER_ID, level_column.in_(included))
+        .order_by(study_familiarity.word_id).with_for_update()).all()
     insert = sqlite_insert if db.get_bind().dialect.name == "sqlite" else postgres_insert
     statement = insert(progress).from_select(
         ["user_id", "word_id", "familiarity_score"],
@@ -46,5 +54,7 @@ def mark_known(request: MarkKnownRequest, db: Session = Depends(get_db)):
         set_={"familiarity_score": 5},
     ).returning(progress.word_id)
     matched_words = len(db.scalars(statement).all())
+    for membership in memberships:
+        refresh_manual_familiarity(db, membership, 5)
     db.commit()
     return MarkKnownResponse(matched_words=matched_words)

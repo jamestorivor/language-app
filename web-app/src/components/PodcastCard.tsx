@@ -1,7 +1,9 @@
+import { useLanguage } from "../i18n-context";
 import { Link } from "react-router";
 import type { EpisodeResponse } from "../contracts/podcast";
 
 export default function PodcastCard({ episode }: { episode: EpisodeResponse }) {
+  const { t } = useLanguage();
   return (
     <>
       <Link
@@ -17,7 +19,7 @@ export default function PodcastCard({ episode }: { episode: EpisodeResponse }) {
         </h2>
         <p className="mt-1 text-sm text-stone-500">{episode.author}</p>
         <span className="mt-auto pt-6 text-sm font-semibold text-emerald-800 group-hover:text-emerald-950">
-          View podcast →
+          {t("View podcast →")}
         </span>
       </Link>
     </>

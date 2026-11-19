@@ -1,3 +1,4 @@
+import { useLanguage } from "../../i18n-context";
 import { useEffect, useRef, useState } from "react";
 import {
   fetchJapaneseTokenGroups,
@@ -6,8 +7,13 @@ import {
 import type { TokenGroup } from "../../contracts/japanese";
 import "./InteractiveTranscript.css";
 import WordPanel from "./WordPanel";
+import { addStudyCard, getStudyCards } from "../../api/study";
+import type { StudyCard } from "../../api/study";
+import { sentenceAt, sentenceOffsets } from "../../utils/studySentence";
+import type { TranscriptContext } from "../../utils/contextNavigation";
 
-export default function InteractiveTranscript({ text, language, onRatingSaved }: { text: string; language: "ja" | "en"; onRatingSaved?: () => void }) {
+export default function InteractiveTranscript({ text, language, segmentId, onRatingSaved, context }: { text: string; language: "ja" | "en"; segmentId: number; onRatingSaved?: () => void; context?: TranscriptContext | null }) {
+  const { t } = useLanguage();
   const [tokens, setTokens] = useState<TokenGroup[] | null>(null);
   const [selection, setSelection] = useState<{
     index: number;
@@ -16,11 +22,28 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
   } | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [studySaving, setStudySaving] = useState(false);
+  const [studyError, setStudyError] = useState("");
+  const [studyCards, setStudyCards] = useState<StudyCard[]>([]);
   const [attempt, setAttempt] = useState(0);
   const [page, setPage] = useState(0);
   const [guideEnabled, setGuideEnabled] = useState(true);
   const [guideTop, setGuideTop] = useState<number | null>(null);
   const transcriptRef = useRef<HTMLParagraphElement>(null);
+  const contextTargetStart = context?.targetStart;
+
+  useEffect(() => {
+    if (contextTargetStart === undefined) return;
+    transcriptRef.current?.querySelector<HTMLElement>("[data-context-target]")?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  }, [contextTargetStart, text, tokens]);
+
+  useEffect(() => {
+    let active = true;
+    void getStudyCards({ segmentId, language }).then((cards) => { if (active) setStudyCards(cards); }).catch(() => {
+      // Adding remains available; the server also handles duplicate requests.
+    });
+    return () => { active = false; };
+  }, [language, segmentId]);
 
   function moveGuide(clientY: number) {
     const paragraph = transcriptRef.current;
@@ -104,8 +127,59 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
   }
 
   const selected = selection === null ? null : tokens?.[selection.index];
+  async function addSelectedSentence(sentence: string) {
+    if (!selected || selected.word_id === null || studySaving) return;
+    const offsets = sentenceOffsets(text, sentence, selected.start_idx, selected.end_idx);
+    if (!offsets) {
+      setStudyError("Choose text from this transcript that contains the selected word.");
+      return;
+    }
+    setStudySaving(true);
+    setStudyError("");
+    const wordId = selected.word_id;
+    const reading = selected.tokens.map((token) => token.katakana_reading).join("").normalize("NFKC")
+      .replace(/[\u30A1-\u30F6]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60));
+    try {
+      const card = await addStudyCard({ word_id: wordId, segment_id: segmentId,
+        dictionary_form: selected.lookup_form,
+        sentence_start: offsets.start, sentence_end: offsets.end,
+        target_start: selected.start_idx, target_end: selected.end_idx, reading,
+        sentence: sentence.trim(), target_text: Array.from(text).slice(selected.start_idx, selected.end_idx).join("") });
+      setStudyCards((cards) => [...cards.filter((item) => item.id !== card.id), card]);
+      if (selected.familiarity_score === -1) {
+        setTokens((current) => current?.map((token) => token.word_id === wordId ? { ...token, familiarity_score: 0 } : token) ?? null);
+        if (selection?.source === "list") setSelection((current) => current?.source === "list" && current.index === selection.index ? null : current);
+        onRatingSaved?.();
+      }
+    } catch {
+      setStudyError("Could not add this sentence. Please try again.");
+    } finally {
+      setStudySaving(false);
+    }
+  }
   // Backend offsets use Unicode code points, unlike JavaScript string indices.
   const characters = Array.from(text);
+  const highlighted = (part: string, offset: number): React.ReactNode => {
+    if (!context || !part) return part;
+    const chars = Array.from(part);
+    const contextKey = `${context.sentenceStart}-${context.sentenceEnd}-${context.targetStart}-${context.targetEnd}`;
+    const boundaries = [0, chars.length, context.sentenceStart - offset, context.sentenceEnd - offset,
+      context.targetStart - offset, context.targetEnd - offset]
+      .filter((value) => value >= 0 && value <= chars.length)
+      .sort((a, b) => a - b);
+    return [...new Set(boundaries)].slice(0, -1).map((start, index, unique) => {
+      const end = unique[index + 1] ?? chars.length;
+      const value = chars.slice(start, end).join("");
+      const absolute = offset + start;
+      if (absolute >= context.targetStart && absolute < context.targetEnd) {
+        return <mark data-context-target key={`${contextKey}-${start}`} className="transcript-context-target">{value}</mark>;
+      }
+      if (absolute >= context.sentenceStart && absolute < context.sentenceEnd) {
+        return <span data-context-sentence key={`${contextKey}-${start}`} className="transcript-context-sentence">{value}</span>;
+      }
+      return value;
+    });
+  };
   let position = 0;
   const content: React.ReactNode[] = [];
   tokens?.forEach((token, index) => {
@@ -121,35 +195,36 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
         ? ` transcript-word-${score}`
         : "";
     content.push(
-      before,
+      highlighted(before, start - Array.from(before).length),
       token.display ? (
         <button
           key={`${token.start_idx}-${index}`}
           type="button"
           className={`transcript-word${className}`}
           aria-pressed={selection?.index === index}
-          onClick={(event) =>
+          onClick={(event) => {
+            setStudyError("");
             setSelection({
               index,
               anchor: event.currentTarget,
               source: "transcript",
-            })
-          }
+            });
+          }}
         >
-          {word}
+          {highlighted(word, start)}
         </button>
       ) : (
-        word
+        highlighted(word, start)
       ),
     );
   });
 
   const pages = [
-    { score: 0, label: "Unrated" },
+    { score: 0, label: t("Unrated") },
     { score: 1, label: "1" },
     { score: 2, label: "2" },
     { score: 3, label: "3" },
-    { score: -1, label: "Won’t learn" },
+    { score: -1, label: t("Won’t learn") },
   ];
   const currentPage = pages[page];
   const seenIds = new Set<number>();
@@ -169,22 +244,22 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
     <>
       <section
         className="rounded-2xl border border-stone-200 bg-white px-6 py-7 shadow-sm sm:px-10 sm:py-9"
-        aria-label="Words in this segment"
+        aria-label={t("Words in this segment")}
       >
         <div className="mx-auto max-w-3xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-stone-950">
-                Level: {currentPage.label}
+                {t("Level:")} {currentPage.label}
               </h2>
               <p className="mt-1 text-sm text-stone-500" aria-live="polite">
-                Words from this segment
+                {t("Words from this segment")}
               </p>
             </div>
-            <div className="flex gap-2" aria-label="Vocabulary pages">
+            <div className="flex gap-2" aria-label={t("Vocabulary pages")}>
               <button
                 type="button"
-                aria-label="Previous vocabulary page"
+                aria-label={t("Previous vocabulary page")}
                 disabled={page === 0}
                 onClick={() => {
                   setPage(page - 1);
@@ -196,7 +271,7 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
               </button>
               <button
                 type="button"
-                aria-label="Next vocabulary page"
+                aria-label={t("Next vocabulary page")}
                 disabled={page === pages.length - 1}
                 onClick={() => {
                   setPage(page + 1);
@@ -210,14 +285,14 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
           </div>
           {!text ? (
             <p className="mt-5 text-sm text-stone-500">
-              No transcript available for this segment.
+              {t("No transcript available for this segment.")}
             </p>
           ) : !tokens ? (
             <p className="mt-5 text-sm text-stone-500">
-              {error ? "Words could not be loaded." : "Loading words…"}
+              {error ? t("Words could not be loaded.") : t("Loading words…")}
             </p>
           ) : pageWords.length === 0 ? (
-            <p className="mt-5 text-sm text-stone-500">No words on this page.</p>
+            <p className="mt-5 text-sm text-stone-500">{t("No words on this page.")}</p>
           ) : (
             <div
               lang={language}
@@ -231,13 +306,14 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
                   aria-pressed={
                     selection?.source === "list" && selection.index === index
                   }
-                  onClick={(event) =>
+                  onClick={(event) => {
+                    setStudyError("");
                     setSelection({
                       index,
                       anchor: event.currentTarget,
                       source: "list",
-                    })
-                  }
+                    });
+                  }}
                 >
                   {token.text}
                 </button>
@@ -249,7 +325,7 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
       <section className="min-h-64 rounded-2xl border border-stone-200 bg-white px-6 py-7 shadow-sm sm:px-10 sm:py-9">
         <div className="mx-auto max-w-3xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold tracking-tight text-stone-950">Transcript</h2>
+            <h2 className="text-xl font-semibold tracking-tight text-stone-950">{t("Transcript")}</h2>
             {text && (
               <button
                 type="button"
@@ -260,11 +336,11 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
                 }}
                 className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-600"
               >
-                Reading guide: {guideEnabled ? "On" : "Off"}
+                {t("Reading guide:")} {guideEnabled ? t("On") : t("Off")}
               </button>
             )}
           </div>
-          {text && <p className="mt-1 text-sm text-stone-500">Select a highlighted word to see its meaning.{guideEnabled && " Move over or tap a line to follow along."}</p>}
+          {text && <p className="mt-1 text-sm text-stone-500">{t("Select a highlighted word to see its meaning.")}{guideEnabled && t(" Move over or tap a line to follow along.")}</p>}
           {text ? (
             <div className="mt-6">
               <p
@@ -284,26 +360,26 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
                 {tokens ? (
                   <>
                     {content}
-                    {characters.slice(position).join("")}
+                    {highlighted(characters.slice(position).join(""), position)}
                   </>
                 ) : (
-                  text
+                  highlighted(text, 0)
                 )}
               </p>
             </div>
           ) : (
             <p className="mt-5 text-sm text-stone-500">
-              No transcript available for this segment.
+              {t("No transcript available for this segment.")}
             </p>
           )}
           {text && !tokens && !error && (
             <p className="mt-3 text-sm text-stone-500" role="status">
-              Loading word details…
+              {t("Loading word details…")}
             </p>
           )}
           {error && (
             <p className="mt-3 text-sm text-red-700" role="alert">
-              {error}{" "}
+              {t(error)}{" "}
               {!tokens && (
                 <button
                   type="button"
@@ -313,7 +389,7 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
                     setAttempt((value) => value + 1);
                   }}
                 >
-                  Retry
+                  {t("Retry")}
                 </button>
               )}
             </p>
@@ -322,11 +398,21 @@ export default function InteractiveTranscript({ text, language, onRatingSaved }:
       </section>
       {selected && selection && (
         <WordPanel
+          key={`${selection.index}-${selection.source}`}
           word={selected}
           language={language}
           anchor={selection.anchor}
-          saving={saving}
-          onClose={() => setSelection(null)}
+          saving={saving || studySaving}
+          sentence={sentenceAt(text, selected.start_idx, selected.end_idx, language)}
+          sentenceNeedsReview={!/[。！？!?.]/u.test(sentenceAt(text, selected.start_idx, selected.end_idx, language))}
+          studySaving={studySaving || saving}
+          studyError={t(studyError)}
+          isStudied={(sentence) => {
+            const offsets = sentenceOffsets(text, sentence, selected.start_idx, selected.end_idx);
+            return !!offsets && studyCards.some((card) => card.word_id === selected.word_id && card.sentence_start === offsets.start && card.sentence_end === offsets.end && card.sentence === sentence.trim());
+          }}
+          onAddToStudy={selection.source === "transcript" && selected.word_id !== null ? (sentence) => void addSelectedSentence(sentence) : undefined}
+          onClose={() => { setSelection(null); setStudyError(""); }}
           onChange={(score) => {
             if (selected.word_id !== null)
               void changeScore(selected.word_id, score);
