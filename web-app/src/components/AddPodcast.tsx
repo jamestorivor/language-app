@@ -5,10 +5,12 @@ import { createEpisode } from "../api/podcast";
 import { useNavigate, useSearchParams } from "react-router";
 import parsePodcastLink from "../utils/urlParser";
 import type { PodcastLink } from "../utils/urlParser";
+import { useStudyLanguage } from "../utils/studyLanguage";
 import TranscriptFileInput from "./TranscriptFileInput";
 import { readTranscriptFile } from "../utils/transcriptFile";
 function AddPodcastCard() {
-  const { t, locale } = useLanguage();
+  const { t } = useLanguage();
+  const [learningLanguage] = useStudyLanguage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [errorMessage, setErrorMessage] = useState("");
@@ -77,7 +79,7 @@ function AddPodcastCard() {
         <form className="mt-6 space-y-5" onSubmit={handleAddButtonClick}>
           <div>
             <label htmlFor="podcast-language" className="block text-sm font-medium text-stone-700">{t("Podcast language")}</label>
-            <select key={locale} id="podcast-language" name="language" defaultValue={(searchParams.get("language") === "en" ? "en" : searchParams.get("language") === "ja" ? "ja" : locale === "ja" ? "en" : "ja") satisfies PodcastLanguage}
+            <select key={learningLanguage} id="podcast-language" name="language" defaultValue={(searchParams.get("language") === "en" ? "en" : searchParams.get("language") === "ja" ? "ja" : learningLanguage) satisfies PodcastLanguage}
               className="mt-2 block w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 focus:border-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-200">
               <option value="ja">日本語</option>
               <option value="en">English</option>

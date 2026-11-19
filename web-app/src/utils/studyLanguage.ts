@@ -1,16 +1,25 @@
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 
 export type StudyLanguage = "ja" | "en";
-const storageKey = "study-language";
+export type StudyLanguageContextValue = {
+  language: StudyLanguage;
+  chooseLanguage: (value: StudyLanguage) => Promise<boolean>;
+  saving: boolean;
+  error: boolean;
+};
+export const StudyLanguageContext = createContext<StudyLanguageContextValue | null>(null);
 
+// A fallback keeps standalone components usable outside the signed-in app.
 export function useStudyLanguage() {
-  const [language, setLanguage] = useState<StudyLanguage>(() => {
-    try { return localStorage.getItem(storageKey) === "en" ? "en" : "ja"; }
+  const context = useContext(StudyLanguageContext);
+  const [fallback, setFallback] = useState<StudyLanguage>(() => {
+    try { return localStorage.getItem("study-language") === "en" ? "en" : "ja"; }
     catch { return "ja"; }
   });
-  function chooseLanguage(value: StudyLanguage) {
-    setLanguage(value);
-    try { localStorage.setItem(storageKey, value); } catch { /* Storage is optional. */ }
+  async function chooseFallback(value: StudyLanguage) {
+    setFallback(value);
+    try { localStorage.setItem("study-language", value); } catch { /* Storage is optional. */ }
+    return true;
   }
-  return [language, chooseLanguage] as const;
+  return [context?.language ?? fallback, context?.chooseLanguage ?? chooseFallback] as const;
 }

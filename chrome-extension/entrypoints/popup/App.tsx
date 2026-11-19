@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Show, SignInButton, UserButton } from "@clerk/chrome-extension";
+import { Show, SignInButton, UserButton, useAuth } from "@clerk/chrome-extension";
 import "./App.css";
+import { API_BASE_URL } from "@/api/config";
 import { PARSE_CURRENT_PAGE_MESSAGE_TYPE } from "@/contracts/content-messages";
 
 async function getCurrentTab() {
@@ -10,11 +11,18 @@ async function getCurrentTab() {
 
 function App() {
   const [status, setStatus] = useState<string>("");
-  const [language, setLanguage] = useState<"ja" | "en">("ja");
+  const { getToken } = useAuth();
 
   async function parseCurrentPage() {
     setStatus("Parsing page…");
     try {
+      const token = await getToken();
+      if (!token) throw new Error("Sign in to load your learning language");
+      const profileResponse = await fetch(new URL("profile", API_BASE_URL), { headers: { Authorization: `Bearer ${token}` } });
+      if (!profileResponse.ok) throw new Error("Could not load your learning language");
+      const profile = await profileResponse.json();
+      if (profile.learning_language !== "ja" && profile.learning_language !== "en") throw new Error("Invalid learning language");
+      const language = profile.learning_language;
       const tab = await getCurrentTab();
       const tabId = tab?.id;
 
@@ -27,8 +35,8 @@ function App() {
       } else {
         setStatus("No active page found");
       }
-    } catch {
-      setStatus("This page is not available to the extension");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not parse this page");
     }
   }
 
@@ -36,10 +44,7 @@ function App() {
     <main>
       <Show when="signed-out"><p>Sign in to use your vocabulary.</p><SignInButton mode="modal" /></Show>
       <Show when="signed-in"><UserButton />
-      <label>Language <select value={language} onChange={(event) => setLanguage(event.target.value as "ja" | "en")}>
-        <option value="ja">Japanese</option>
-        <option value="en">English</option>
-      </select></label>
+      <p>Uses the learning language in your profile.</p>
       <button
         type="button"
         onClick={parseCurrentPage}

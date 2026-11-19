@@ -35,6 +35,16 @@ class LevelProgress(BaseModel):
     total: int
 
 
+@router.get("/vocabulary/known-count")
+def get_known_count(language: Literal["ja", "en"], db: Session = Depends(get_db),
+                    user_id: int = Depends(current_user_id)):
+    progress = JapaneseWordFamiliarity if language == "ja" else EnglishWordFamiliarity
+    count = db.scalar(select(func.count()).select_from(progress).where(
+        progress.user_id == user_id, progress.familiarity_score.in_((4, 5)),
+    ))
+    return {"count": count}
+
+
 @router.get("/vocabulary/mark-known", response_model=list[LevelProgress])
 def get_mark_known_progress(language: Literal["ja", "en"], db: Session = Depends(get_db),
                             user_id: int = Depends(current_user_id)):

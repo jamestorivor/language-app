@@ -1,7 +1,8 @@
 import { useLanguage } from "../i18n-context";
 import { useEffect, useState } from "react";
 import { getEpisodes } from "../api/podcast";
-import type { EpisodeResponse, PodcastLanguage } from "../contracts/podcast";
+import type { EpisodeResponse } from "../contracts/podcast";
+import { useStudyLanguage } from "../utils/studyLanguage";
 import PodcastCard from "./PodcastCard";
 import { Link, useSearchParams } from "react-router";
 
@@ -19,7 +20,7 @@ export default function PodcastLibrary() {
   const [episodes, setEpisodes] = useState<EpisodeResponse[] | null>(null);
   const [error, setError] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const language: PodcastLanguage = searchParams.get("language") === "en" ? "en" : searchParams.get("language") === "ja" ? "ja" : locale === "ja" ? "en" : "ja";
+  const [language] = useStudyLanguage();
   const requestedSort = searchParams.get("sort");
   const sort: SortOrder = sortOptions.find(([value]) => value === requestedSort)?.[0] ?? "newest";
 
@@ -57,15 +58,6 @@ export default function PodcastLibrary() {
   return (
     <>
       <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
-      <div className="inline-flex rounded-xl bg-stone-200/70 p-1" role="group" aria-label={t("Podcast language")}>
-        {([ ["ja", "日本語"], ["en", "English"] ] as const).map(([value, label]) => (
-          <button key={value} type="button" aria-pressed={language === value}
-            onClick={() => updateParam("language", value)}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${language === value ? "bg-white text-emerald-900 shadow-sm" : "text-stone-600 hover:text-stone-900"}`}>
-            {label}
-          </button>
-        ))}
-      </div>
       <label className="flex items-center gap-2 text-sm font-semibold text-stone-700">
         {t("Sort by")}
         <select value={sort} onChange={(event) => updateParam("sort", event.target.value)}

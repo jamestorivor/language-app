@@ -20,23 +20,22 @@ function showApp(path = "/") {
 afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); });
 
 describe("interface language", () => {
-  it("switches the interface, defaults to English study, and remembers the choice", async () => {
+  it("keeps the learning language independent when changing the interface language", async () => {
     const user = userEvent.setup();
     const view = showApp();
     await user.click(screen.getByRole("link", { name: "User settings" }));
     await user.selectOptions(screen.getByRole("combobox", { name: "Choose your interface language" }), "ja");
     expect(screen.getByRole("heading", { name: "ユーザー設定" })).toBeTruthy();
     expect(document.documentElement.lang).toBe("ja");
-    expect((screen.getByRole("combobox", { name: "言語" }) as HTMLSelectElement).value).toBe("en");
-    expect((screen.getByRole("combobox", { name: "CEFRレベル" }) as HTMLSelectElement).value).toBe("A1");
+    expect(within(screen.getByRole("group", { name: "学習する言語を選択" })).getByRole("button", { name: "日本語" }).getAttribute("aria-pressed")).toBe("true");
+    expect((screen.getByRole("combobox", { name: "JLPTレベル" }) as HTMLSelectElement).value).toBe("N5");
     expect(localStorage.getItem("interface-language")).toBe("ja");
     view.unmount();
     showApp("/podcasts");
-    const languages = await screen.findByRole("group", { name: "ポッドキャストの言語" });
-    expect(within(languages).getByRole("button", { name: "English" }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("heading", { name: "英語のエピソードはまだありません" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "日本語のエピソードはまだありません" })).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "ポッドキャストの言語" })).toBeNull();
     await user.click(screen.getAllByRole("link", { name: "ポッドキャストを追加", exact: true })[1]);
-    expect((screen.getByRole("combobox", { name: "ポッドキャストの言語" }) as HTMLSelectElement).value).toBe("en");
+    expect((screen.getByRole("combobox", { name: "ポッドキャストの言語" }) as HTMLSelectElement).value).toBe("ja");
     expect(vi.mocked(podcastApi.getEpisodes)).toHaveBeenCalled();
   });
 

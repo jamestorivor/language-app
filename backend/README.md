@@ -57,3 +57,5 @@ language, or rebuilding segments starts a new baseline. Estimates use matched tr
 vocabulary and do not measure listening comprehension or grammar.
 Episode added dates are recorded for new episodes; older episodes show the date as
 unavailable because it was not previously stored.
+
+The account learning language is stored in the database and requires `alembic upgrade head` before running the updated web app or extension. Existing accounts default to Japanese; users can choose English in User settings. Progress and podcast language remain separate for each language.

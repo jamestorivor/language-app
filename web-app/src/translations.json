@@ -1,6 +1,10 @@
 {
   "Language app": "語学アプリ",
   "Home": "ホーム",
+  "Loading known words…": "知っている単語を読み込み中…",
+  "Could not load known words.": "知っている単語数を読み込めませんでした。",
+  "{count} known words": "知っている単語 {count} 語",
+  "{language} · Words rated 4 or 5": "{language} · 評価が4または5の単語",
   "My podcasts": "マイポッドキャスト",
   "Study": "学習",
   "Add podcast": "ポッドキャストを追加",
@@ -413,5 +417,14 @@
   "{known} / {total} known": "{total}語中{known}語を設定済み",
   "Choose a level to mark": "設定するレベルを選択",
   "This will mark words in: {levels}.": "対象となるレベル：{levels}。",
-  "These words will be rated 5, replacing any existing ratings. Choosing a lower level will not undo previous ratings. Level lists are approximate and do not cover every word.": "対象の単語は評価5に設定され、既存の評価は上書きされます。低いレベルを選んでも、以前の設定は取り消されません。レベル別の単語リストは目安であり、すべての単語を網羅していません。"
+  "These words will be rated 5, replacing any existing ratings. Choosing a lower level will not undo previous ratings. Level lists are approximate and do not cover every word.": "対象の単語は評価5に設定され、既存の評価は上書きされます。低いレベルを選んでも、以前の設定は取り消されません。レベル別の単語リストは目安であり、すべての単語を網羅していません。",
+  "Choose how you’d like to study.": "学習方法を選びましょう。",
+  "Confirm language change": "学習言語の変更を確定",
+  "Learning language": "学習言語",
+  "Choose the language you are learning": "学習する言語を選択",
+  "Your podcasts, vocabulary and study progress follow this choice. Your progress in each language is kept.": "ポッドキャスト、語彙、学習の進捗は選択した言語に合わせて表示されます。各言語の進捗は保存されます。",
+  "The server is not configured for sign-in. Check the backend authentication settings and restart it.": "サーバーのログイン設定ができていません。バックエンドの認証設定を確認し、再起動してください。",
+  "Could not load your learning language.": "学習言語を読み込めませんでした。",
+  "Loading your profile…": "プロフィールを読み込んでいます…",
+  "Could not save your learning language. Please try again.": "学習言語を保存できませんでした。もう一度お試しください。"
 }

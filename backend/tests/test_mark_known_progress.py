@@ -31,16 +31,22 @@ def test_progress_counts_current_users_word_ratings(language, levels):
         words = ([dictionary(headword=f"word{i}", lookup_key=f"word{i}", meaning="meaning", cefr_level=level)
                   for i, level in enumerate(levels)] if language == "en" else
                  [dictionary(source_entry_id=i + 1, senses=[], jlpt_level=level) for i, level in enumerate(levels)])
+        words.append(dictionary(headword="unlevelled", lookup_key="unlevelled", meaning="meaning") if language == "en"
+                     else dictionary(source_entry_id=4, senses=[]))
         session.add_all(words)
         session.flush()
         session.add_all([progress(user_id=1, word_id=words[0].word_id, familiarity_score=5),
                          progress(user_id=1, word_id=words[1].word_id, familiarity_score=2),
+                         progress(user_id=1, word_id=words[2].word_id, familiarity_score=4),
+                         progress(user_id=1, word_id=words[3].word_id, familiarity_score=5),
                          progress(user_id=2, word_id=words[1].word_id, familiarity_score=5)])
         session.commit()
         app.dependency_overrides[get_db] = lambda: session
         app.dependency_overrides[current_user_id] = lambda: 1
         try:
             with TestClient(app) as client:
+                assert client.get("/api/vocabulary/known-count", params={"language": language}).json() == {"count": 3}
+                assert client.get("/api/vocabulary/known-count", params={"language": "invalid"}).status_code == 422
                 response = client.get("/api/vocabulary/mark-known", params={"language": language})
                 assert response.status_code == 200
                 assert response.json()[:3] == [
@@ -50,6 +56,7 @@ def test_progress_counts_current_users_word_ratings(language, levels):
                 ]
                 session.get(progress, (1, words[1].word_id)).familiarity_score = 5
                 session.commit()
+                assert client.get("/api/vocabulary/known-count", params={"language": language}).json() == {"count": 4}
                 assert client.get("/api/vocabulary/mark-known", params={"language": language}).json()[0]["known"] == 2
                 assert client.get("/api/vocabulary/mark-known", params={"language": "invalid"}).status_code == 422
         finally:

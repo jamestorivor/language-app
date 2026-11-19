@@ -16,12 +16,13 @@ afterEach(() => { cleanup(); localStorage.clear(); vi.clearAllMocks(); });
 
 it("starts a review in the selected language and offers links to podcasts and study", async () => {
   const user = userEvent.setup();
+  localStorage.setItem("study-language", "en");
   render(<MemoryRouter><LanguageProvider><App /></LanguageProvider></MemoryRouter>);
   const main = screen.getByRole("main");
   expect(within(main).getByRole("link", { name: "My podcasts" }).getAttribute("href")).toBe("/podcasts");
   expect(within(main).getByRole("link", { name: "Study" }).getAttribute("href")).toBe("/study");
   expect(within(main).queryByRole("heading", { name: "Mark words you already know" })).toBeNull();
-  await user.click(within(main).getByRole("button", { name: "English" }));
+  expect(within(main).queryByRole("button", { name: "English" })).toBeNull();
   await user.click(within(main).getByRole("link", { name: "Start English review" }));
   await waitFor(() => expect(studyApi.getStudyCards).toHaveBeenCalledWith({ dueOnly: true, language: "en" }));
 });

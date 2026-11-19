@@ -4,7 +4,6 @@ import { updateWordFamiliarity } from "../api/japanese";
 import { deleteStudyCard, getStudyCards, updateStudyCard } from "../api/study";
 import type { StudyCard } from "../api/study";
 import StudyContext, { HighlightedSentence } from "./StudyContext";
-import { StudyLanguageSelector } from "./StudyLanguage";
 import { useStudyLanguage } from "../utils/studyLanguage";
 import "./StudyDesign.css";
 
@@ -37,7 +36,7 @@ function formatDate(value: string | null, locale: string) {
 
 export default function StudyList() {
   const { t, locale } = useLanguage();
-  const [studyLanguage, setStudyLanguage] = useStudyLanguage();
+  const [studyLanguage] = useStudyLanguage();
   const [cards, setCards] = useState<StudyCard[]>([]);
   const [status, setStatus] = useState<StatusFilter>("all");
   const [familiarity, setFamiliarity] = useState<FamiliarityFilter>("all");
@@ -56,6 +55,8 @@ export default function StudyList() {
   useEffect(() => {
     const request = ++requestRef.current;
     const lifecycle = new AbortController();
+    setCards([]); setLoading(true); setError(""); setNotice("");
+    setOpenContext(null); setEditing(null); setConfirmRemoval(null); setReactivation(null);
     void getStudyCards({ includeRemoved: true, language: studyLanguage }).then((result) => {
       if (!lifecycle.signal.aborted && request === requestRef.current) setCards(result);
     }).catch(() => {
@@ -146,13 +147,6 @@ export default function StudyList() {
 
   return <div className="study-list-shell mx-auto max-w-3xl">
     <h1 className="text-lg font-semibold text-stone-900">{t("Study List")}</h1>
-    <StudyLanguageSelector language={studyLanguage} disabled={busy !== null} onChange={(value) => {
-      if (value === studyLanguage) return;
-      ++requestRef.current;
-      setCards([]); setLoading(true); setError(""); setNotice("");
-      setOpenContext(null); setEditing(null); setConfirmRemoval(null); setReactivation(null);
-      setStudyLanguage(value);
-    }} />
     <div className="study-filters mt-6 grid gap-4 sm:grid-cols-2">
       <label className="text-sm font-semibold text-stone-700">{t("Status")}
         <select value={status} onChange={(event) => setStatus(event.target.value as StatusFilter)} className="mt-2 block w-full rounded-lg border border-stone-300 bg-white px-3 py-2 font-normal focus:outline-2 focus:outline-emerald-800">

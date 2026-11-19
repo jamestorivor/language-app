@@ -66,3 +66,15 @@ def test_missing_configuration_fails_closed(auth_setup, monkeypatch):
     client, _db, key = auth_setup
     monkeypatch.delenv("CLERK_AUTHORIZED_PARTIES")
     assert client.get("/api/podcasts", headers=headers(token(key))).status_code == 503
+
+
+def test_learning_language_is_saved_per_account(auth_setup):
+    client, _db, key = auth_setup
+    one, two = headers(token(key)), headers(token(key, sub="user_two"))
+    assert client.get("/api/profile").status_code == 401
+    assert client.get("/api/profile", headers=one).json() == {"learning_language": "ja"}
+    assert client.put("/api/profile", headers=one, json={"learning_language": "en"}).json() == {"learning_language": "en"}
+    assert client.get("/api/profile", headers=one).json() == {"learning_language": "en"}
+    assert client.get("/api/profile", headers=two).json() == {"learning_language": "ja"}
+    assert client.put("/api/profile", headers=one, json={"learning_language": "fr"}).status_code == 422
+    assert client.get("/api/profile", headers=one).json() == {"learning_language": "en"}

@@ -4,11 +4,10 @@ import { useLanguage } from "../i18n-context";
 import { getStudyStats } from "../api/study";
 import type { StudyStats } from "../api/study";
 import { useStudyLanguage } from "../utils/studyLanguage";
-import { StudyLanguageSelector } from "./StudyLanguage";
 
 export default function StudyHome() {
   const { t } = useLanguage();
-  const [language, setLanguage] = useStudyLanguage();
+  const [language] = useStudyLanguage();
   const [summary, setSummary] = useState<{ language: string; stats: StudyStats | null } | null>(null);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
@@ -29,7 +28,7 @@ export default function StudyHome() {
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-800">{t("YOUR PRACTICE")}</p>
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-stone-950 sm:text-4xl">{t("Study")}</h1>
-        <p className="mt-3 text-base text-stone-600">{t("Choose a language and how you’d like to study.")}</p>
+        <p className="mt-3 text-base text-stone-600">{t("Choose how you’d like to study.")}</p>
       </div>
       <Link to="/study/settings" aria-label={t("Study settings")} title={t("Study settings")} className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-stone-600 hover:bg-stone-200 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">
         <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -38,7 +37,6 @@ export default function StudyHome() {
       </Link>
     </div>
     <div className="mx-auto max-w-3xl">
-    <StudyLanguageSelector language={language} onChange={setLanguage} />
 
     <nav aria-label={t("Study navigation")} className="mt-8 grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <Link to="/study/review" aria-label={reviewLabel} className="flex min-h-24 items-center justify-between gap-4 rounded-xl bg-emerald-900 px-5 py-5 text-white transition-colors hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 sm:px-6">

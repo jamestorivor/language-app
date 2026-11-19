@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "../i18n-context";
 import { API_BASE_URL } from "../api/config";
 import { loggedFetch } from "../api/client";
+import { useStudyLanguage } from "../utils/studyLanguage";
+import KnownWordCount from "./KnownWordCount";
 
 type Language = "ja" | "en";
 type LevelProgress = { level: string; known: number; total: number };
@@ -20,14 +22,15 @@ async function loadProgress(language: Language): Promise<LevelProgress[]> {
 
 export default function MarkKnown() {
   const { t, locale } = useLanguage();
-  const [language, setLanguage] = useState<Language>(() => locale === "ja" ? "en" : "ja");
-  const [level, setLevel] = useState(() => locale === "ja" ? "A1" : "N5");
+  const [language] = useStudyLanguage();
+  const [level, setLevel] = useState(() => levels[language][0]);
   const [progress, setProgress] = useState<LevelProgress[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [countRefresh, setCountRefresh] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -64,6 +67,7 @@ export default function MarkKnown() {
       });
       if (!response.ok) throw new Error("Request failed");
       const result: { matched_words: number } = await response.json();
+      setCountRefresh((value) => value + 1);
       setMessage(result.matched_words === 0
         ? t("No matching words were found. Make sure the dictionary and level data have been imported.")
         : t("Marked {count} words as known.", { count: result.matched_words.toLocaleString(locale) }));
@@ -85,22 +89,11 @@ export default function MarkKnown() {
     <section className="mt-6 max-w-3xl rounded-3xl border border-stone-200 bg-white px-6 py-8 shadow-sm sm:px-12">
       <h2 className="text-xl font-bold tracking-tight text-stone-950">{t("Mark words you already know")}</h2>
       <p className="mt-2 text-sm leading-6 text-stone-600">{t("Start with a level to mark its words and all easier words as known.")}</p>
-      <label className="mt-6 flex flex-col items-start gap-1.5 text-sm font-medium text-stone-700">
-        {t("Language")}
-        <select value={language} disabled={pending} onChange={(event) => {
-          const next = event.target.value as Language;
-          setLanguage(next);
-          setLevel(levels[next][0]);
-          setMessage("");
-          setError("");
-        }} className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900">
-          <option value="ja">日本語</option>
-          <option value="en">English</option>
-        </select>
-      </label>
+
 
       <div className="mt-5 rounded-2xl bg-stone-50 p-5" aria-live="polite">
-        <h3 className="text-sm font-semibold text-stone-900">{t("Your current marked level")}</h3>
+        <KnownWordCount language={language} refresh={countRefresh} />
+        <h3 className="mt-5 text-sm font-semibold text-stone-900">{t("Your current marked level")}</h3>
         {loading ? <p className="mt-2 text-sm text-stone-600">{t("Loading your progress…")}</p>
           : loadError ? <p className="mt-2 text-sm text-red-700">{t("Could not load your current progress. Please refresh the page to try again.")}</p>
           : <>

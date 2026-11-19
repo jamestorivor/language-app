@@ -335,8 +335,9 @@ describe("Study List", () => {
 });
 
 
-it("chooses the study language on the home page and keeps it for reviews and the study list", async () => {
+it("uses the learning language for the study page, reviews and study list", async () => {
   const user = userEvent.setup();
+  localStorage.setItem("study-language", "en");
   const english = card({ id: -1, language: "en", target_text: "cat", reading: "", definitions: ["猫"] });
   vi.mocked(studyApi.getStudyCards).mockImplementation(async (options) => options?.language === "en" ? [english] : [card()]);
   vi.mocked(studyApi.getStudyStats).mockImplementation(async (_zone, language) => ({ due_count: language === "en" ? 3 : 1, due_today_count: 1, completed_count: 0 }));
@@ -346,8 +347,7 @@ it("chooses the study language on the home page and keeps it for reviews and the
   expect(screen.getByRole("link", { name: /Study settings/ }).getAttribute("href")).toBe("/study/settings");
   expect(screen.getByRole("link", { name: /Study List/ }).getAttribute("href")).toBe("/study/list");
   expect(studyApi.getStudyCards).not.toHaveBeenCalled();
-  await waitFor(() => expect(within(screen.getByRole("region", { name: "Today’s progress" })).getAllByText("1")).toHaveLength(2));
-  await user.click(screen.getByRole("button", { name: "English" }));
+  expect(screen.queryByRole("button", { name: "English" })).toBeNull();
   expect(screen.getByRole("link", { name: "Start English review" })).toBeTruthy();
   await waitFor(() => expect(within(screen.getByRole("region", { name: "Today’s progress" })).getByText("3")).toBeTruthy());
   await user.click(screen.getByRole("link", { name: "Start English review" }));
@@ -360,12 +360,10 @@ it("chooses the study language on the home page and keeps it for reviews and the
   expect(studyApi.getStudyStats).toHaveBeenLastCalledWith(expect.any(String), "en");
   view.unmount();
   render(<MemoryRouter initialEntries={["/study"]}>{routes}</MemoryRouter>);
-  expect(screen.getByRole("button", { name: "English" }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.queryByRole("button", { name: "English" })).toBeNull();
   await user.click(screen.getByRole("link", { name: /Study List/ }));
   await screen.findByRole("heading", { name: "cat" });
   expect(studyApi.getStudyCards).toHaveBeenLastCalledWith({ includeRemoved: true, language: "en" });
-  expect(screen.getByRole("button", { name: "English" }).getAttribute("aria-pressed")).toBe("true");
-  await user.click(screen.getByRole("button", { name: "日本語" }));
-  await screen.findByRole("heading", { name: "猫" });
-  expect(screen.queryByRole("heading", { name: "cat" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "English" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "日本語" })).toBeNull();
 });

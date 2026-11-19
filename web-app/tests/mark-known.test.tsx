@@ -14,6 +14,9 @@ it("shows current progress, previews included levels, and refreshes after markin
       marked = true;
       return new Response(JSON.stringify({ matched_words: 3 }), { status: 200 });
     }
+    if (_url.pathname.endsWith("/known-count")) {
+      return new Response(JSON.stringify({ count: marked ? 4 : 3 }), { status: 200 });
+    }
     return new Response(JSON.stringify([
       { level: "N5", known: 2, total: 2 },
       { level: "N4", known: marked ? 1 : 0, total: 1 },
@@ -25,10 +28,12 @@ it("shows current progress, previews included levels, and refreshes after markin
   const user = userEvent.setup();
   render(<LanguageProvider><MarkKnown /></LanguageProvider>);
   expect(await screen.findByText("Fully marked through N5")).toBeTruthy();
+  expect(await screen.findByText("3 known words")).toBeTruthy();
   expect(screen.getByText("0 / 1 known").parentElement?.textContent).toContain("N4");
   await user.selectOptions(screen.getByRole("combobox", { name: "JLPT level" }), "N4");
   expect(screen.getByText("This will mark words in: N5, N4.")).toBeTruthy();
   await user.click(screen.getByRole("button", { name: "Mark as known" }));
   await waitFor(() => expect(screen.getByText("Fully marked through N4")).toBeTruthy());
+  expect(await screen.findByText("4 known words")).toBeTruthy();
   expect(screen.getByRole("status").textContent).toBe("Marked 3 words as known.");
 });
