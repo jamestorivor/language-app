@@ -106,3 +106,29 @@ it("does not save or redirect when the selection is reverted", async () => {
   expect(screen.getByRole("heading", { name: "User settings" })).toBeTruthy();
   expect(fetcher.mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
 });
+
+it("shows the saved profile level and allows it to be changed without marking words", async () => {
+  let level: string | null = "N4";
+  const fetcher = vi.fn(async (url: URL, init: RequestInit = {}) => {
+    if (url.pathname.endsWith("/profile/level")) {
+      expect(JSON.parse(init.body as string)).toEqual({ language: "ja", level: "N3" });
+      level = "N3";
+      return Response.json({ language: "ja", level });
+    }
+    if (url.pathname.endsWith("/profile")) return Response.json({ learning_language: "ja", levels: { ja: level, en: "B1" } });
+    if (url.pathname.endsWith("/known-count")) return Response.json({ count: 0 });
+    if (url.pathname.endsWith("/mark-known")) return Response.json([]);
+    throw new Error("Unexpected request");
+  });
+  vi.stubGlobal("fetch", fetcher);
+  const user = userEvent.setup();
+  const view = app("/settings");
+  expect(await screen.findByText("N4", { selector: "strong" })).toBeTruthy();
+  await user.selectOptions(screen.getByRole("combobox", { name: "Choose your profile level" }), "N3");
+  await user.click(screen.getByRole("button", { name: "Save level" }));
+  expect(await screen.findByText("N3", { selector: "strong" })).toBeTruthy();
+  expect(fetcher.mock.calls.some(([url, init]) => url.pathname.endsWith("/mark-known") && init?.method === "POST")).toBe(false);
+  view.unmount();
+  app("/settings");
+  expect(await screen.findByText("N3", { selector: "strong" })).toBeTruthy();
+});

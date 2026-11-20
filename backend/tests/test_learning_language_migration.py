@@ -44,3 +44,22 @@ def test_onboarding_migration_preserves_existing_preferences_and_marks_new_accou
             assert connection.execute(text("SELECT learning_language_selected FROM users WHERE id = 3")).scalar_one() is None
             migration.downgrade()
             assert "learning_language_selected" not in {column["name"] for column in inspect(connection).get_columns("users")}
+
+
+def test_profile_levels_migration_keeps_existing_users_and_protects_saved_values():
+    path = Path(__file__).resolve().parents[1] / "alembic/versions/c6f28a17d345_profile_levels.py"
+    spec = importlib.util.spec_from_file_location("profile_levels_migration", path)
+    migration = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migration)
+    engine = create_engine("sqlite://")
+    with engine.begin() as connection:
+        connection.execute(text("CREATE TABLE users (id INTEGER PRIMARY KEY)"))
+        connection.execute(text("INSERT INTO users VALUES (1)"))
+        with Operations.context(MigrationContext.configure(connection)):
+            migration.upgrade()
+            assert connection.execute(text("SELECT japanese_level, english_level FROM users")).one() == (None, None)
+            connection.execute(text("UPDATE users SET english_level = 'B1'"))
+            with pytest.raises(RuntimeError, match="saved levels exist"):
+                migration.downgrade()
+            connection.execute(text("UPDATE users SET english_level = NULL"))
+            migration.downgrade()

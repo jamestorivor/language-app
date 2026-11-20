@@ -103,7 +103,7 @@ def test_onboarding_marks_selected_level_and_saves_profile_together(language, le
                 response = client.post("/api/profile/onboarding", json={"learning_language": language, "level": threshold})
                 assert response.status_code == 200
                 session.expire_all()
-                assert client.get("/api/profile").json() == {"learning_language": language, "onboarding_required": False}
+                assert client.get("/api/profile").json() == {"learning_language": language, "onboarding_required": False, "levels": {"ja": threshold if language == "ja" else None, "en": threshold if language == "en" else None}}
                 assert [session.get(progress, (DEVELOPMENT_USER_ID, word_id)).familiarity_score for word_id in ids[:2]] == [5, 5]
                 assert session.get(progress, (DEVELOPMENT_USER_ID, ids[2])) is None
                 assert client.post("/api/profile/onboarding", json={"learning_language": language, "level": threshold}).status_code == 409
@@ -122,7 +122,25 @@ def test_onboarding_can_skip_marking_words():
         try:
             with TestClient(app) as client:
                 assert client.post("/api/profile/onboarding", json={"learning_language": "en", "level": None}).status_code == 200
-                assert client.get("/api/profile").json() == {"learning_language": "en", "onboarding_required": False}
+                assert client.get("/api/profile").json() == {"learning_language": "en", "onboarding_required": False, "levels": {"ja": None, "en": None}}
+        finally:
+            app.dependency_overrides.pop(get_db, None)
+    engine.dispose()
+
+
+def test_onboarding_reports_when_level_has_no_dictionary_words():
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    for table in (User.__table__, EnglishDictionary.__table__, EnglishWordFamiliarity.__table__, EnglishStudyFamiliarity.__table__):
+        table.create(engine)
+    with Session(engine) as session:
+        session.add(User(id=DEVELOPMENT_USER_ID, name="new"))
+        session.commit()
+        app.dependency_overrides[get_db] = lambda: session
+        try:
+            with TestClient(app) as client:
+                result = client.post("/api/profile/onboarding", json={"learning_language": "en", "level": "A2"})
+                assert result.json() == {"learning_language": "en", "matched_words": 0}
+                assert client.get("/api/profile").json()["levels"]["en"] == "A2"
         finally:
             app.dependency_overrides.pop(get_db, None)
     engine.dispose()

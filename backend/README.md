@@ -60,3 +60,4 @@ unavailable because it was not previously stored.
 
 The account learning language is stored in the database and requires `alembic upgrade head` before running the updated web app or extension. Existing accounts default to Japanese; users can choose English in User settings. Progress and podcast language remain separate for each language.
 New accounts choose their learning language when they first sign in and can optionally mark words through a JLPT or CEFR level as known. Apply the latest migration to preserve existing accounts' choices and enable this onboarding step.
+The profile stores an optional level for each language. Earlier onboarding selections were not saved as profile levels and cannot be recovered reliably; existing users can set their level in User settings. Changing a profile level does not change word ratings.

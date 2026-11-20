@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Show, SignInButton, UserButton, useAuth } from "@clerk/chrome-extension";
 import "./App.css";
 import { API_BASE_URL } from "@/api/config";
+import { learningLanguageFromProfile } from "@/api/profile";
 import { PARSE_CURRENT_PAGE_MESSAGE_TYPE } from "@/contracts/content-messages";
 
 async function getCurrentTab() {
@@ -20,9 +21,7 @@ function App() {
       if (!token) throw new Error("Sign in to load your learning language");
       const profileResponse = await fetch(new URL("profile", API_BASE_URL), { headers: { Authorization: `Bearer ${token}` } });
       if (!profileResponse.ok) throw new Error("Could not load your learning language");
-      const profile = await profileResponse.json();
-      if (profile.learning_language !== "ja" && profile.learning_language !== "en") throw new Error("Invalid learning language");
-      const language = profile.learning_language;
+      const language = learningLanguageFromProfile(await profileResponse.json());
       const tab = await getCurrentTab();
       const tabId = tab?.id;
 

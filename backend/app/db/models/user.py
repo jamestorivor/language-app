@@ -13,5 +13,7 @@ class User(Base):
     fsrs_fuzzing: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text('true'))
     learning_language: Mapped[str] = mapped_column(String(2), nullable=False, default="ja", server_default="ja")
     learning_language_selected: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    japanese_level: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    english_level: Mapped[str | None] = mapped_column(String(2), nullable=True)
     study_shortcuts: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # date_created : ???

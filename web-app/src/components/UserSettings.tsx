@@ -1,7 +1,7 @@
 import { useLanguage } from "../i18n-context";
 import { useContext, useState } from "react";
 import { useNavigate } from "react-router";
-import { StudyLanguageContext, useStudyLanguage, type StudyLanguage } from "../utils/studyLanguage";
+import { StudyLanguageContext, studyLevels, useStudyLanguage, type StudyLanguage } from "../utils/studyLanguage";
 import MarkKnown from "./MarkKnown";
 
 export default function UserSettings() {
@@ -11,6 +11,9 @@ export default function UserSettings() {
   const navigate = useNavigate();
   const [pendingLanguage, setPendingLanguage] = useState<StudyLanguage>(learningLanguage);
   const [saveFailed, setSaveFailed] = useState(false);
+  const [pendingLevel, setPendingLevel] = useState<string | null>(null);
+  const [editingLevel, setEditingLevel] = useState(false);
+  const [levelFailed, setLevelFailed] = useState(false);
 
   async function confirmChange() {
     if (pendingLanguage === learningLanguage) return;
@@ -36,6 +39,20 @@ export default function UserSettings() {
         {saveFailed && <p role="alert" className="mt-3 text-sm text-red-700">{t("Could not save your learning language. Please try again.")}</p>}
         <p className="mt-2 text-sm text-stone-500">{t("Your podcasts, vocabulary and study progress follow this choice. Your progress in each language is kept.")}</p>
       </section>
+      {profile && <section className="mt-8 rounded-3xl border border-stone-200 bg-white px-6 py-8 shadow-sm sm:px-12">
+        <h2 className="text-xl font-bold tracking-tight text-stone-950">{t("Your language level")}</h2>
+        <p className="mt-2 text-sm text-stone-600">{t("Saved level for {language}", { language: learningLanguage === "ja" ? "日本語" : "English" })}: <strong>{profile.levels[learningLanguage] ?? t("Not set")}</strong></p>
+        <p className="mt-2 text-sm leading-6 text-stone-600">{t("Changing this profile level does not change your word ratings.")}</p>
+        <label className="mt-4 flex flex-col items-start gap-1.5 text-sm font-medium text-stone-700">
+          {t("Choose your profile level")}
+          <select value={editingLevel ? pendingLevel ?? "" : profile.levels[learningLanguage] ?? ""} disabled={profile.saving} onChange={(event) => { setPendingLevel(event.target.value || null); setEditingLevel(true); setLevelFailed(false); }} className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900">
+            <option value="">{t("Not set")}</option>
+            {studyLevels[learningLanguage].map((item) => <option key={item} value={item}>{item}</option>)}
+          </select>
+        </label>
+        <button type="button" disabled={!editingLevel || pendingLevel === profile.levels[learningLanguage] || profile.saving} onClick={() => void (async () => { if (await profile.chooseLevel(learningLanguage, pendingLevel)) setEditingLevel(false); else setLevelFailed(true); })()} className="mt-4 rounded-lg bg-emerald-900 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">{profile.saving ? t("Saving…") : t("Save level")}</button>
+        {levelFailed && <p role="alert" className="mt-3 text-sm text-red-700">{t("Could not save your level. Please try again.")}</p>}
+      </section>}
       <section className="mt-8 rounded-3xl border border-stone-200 bg-white px-6 py-8 shadow-sm sm:px-12">
         <h2 className="text-xl font-bold tracking-tight text-stone-950">{t("Interface language")}</h2>
         <label className="mt-4 flex flex-col items-start gap-1.5 text-sm font-medium text-stone-700">

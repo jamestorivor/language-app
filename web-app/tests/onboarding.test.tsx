@@ -78,3 +78,30 @@ it("resets the level when the language changes", async () => {
   expect(screen.getByRole("option", { name: "JLPT N5" })).toBeTruthy();
   expect(screen.queryByRole("option", { name: "CEFR A2" })).toBeNull();
 });
+
+it("recovers when the save succeeded but its response was lost", async () => {
+  let completed = false;
+  vi.stubGlobal("fetch", vi.fn(async (_url: URL, init: RequestInit = {}) => {
+    if (init.method === "POST") { completed = true; throw new Error("Connection lost"); }
+    return Response.json({ learning_language: completed ? "en" : "ja", onboarding_required: !completed, levels: { ja: null, en: completed ? "A2" : null } });
+  }));
+  const user = userEvent.setup();
+  renderApp();
+  await user.click(await screen.findByRole("radio", { name: "English" }));
+  await user.selectOptions(screen.getByRole("combobox"), "A2");
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+  expect(await screen.findByText("Learning: en")).toBeTruthy();
+});
+
+it("warns when a saved level could not mark any words", async () => {
+  vi.stubGlobal("fetch", vi.fn(async (_url: URL, init: RequestInit = {}) => init.method === "POST"
+    ? Response.json({ learning_language: "en", matched_words: 0 })
+    : Response.json({ learning_language: "ja", onboarding_required: true })));
+  const user = userEvent.setup();
+  renderApp();
+  await user.click(await screen.findByRole("radio", { name: "English" }));
+  await user.selectOptions(screen.getByRole("combobox"), "A2");
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+  expect((await screen.findByRole("alert")).textContent).toContain("no matching words were found");
+  expect(screen.getByText("Learning: en")).toBeTruthy();
+});

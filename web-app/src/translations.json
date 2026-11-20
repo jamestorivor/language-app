@@ -436,5 +436,14 @@
   "Choose a level to mark its words and all easier words as known. You can also do this later in settings.": "レベルを選ぶと、そのレベルとそれ以下の単語を知っている単語として設定します。後から設定でも変更できます。",
   "Start without marking words": "単語を設定せずに始める",
   "These words will be rated 5, replacing any existing ratings. Level lists are approximate and do not cover every word.": "対象の単語は評価5に設定され、既存の評価は上書きされます。レベル別の単語リストは目安であり、すべての単語を網羅していません。",
-  "Could not complete setup. Please try again.": "初期設定を完了できませんでした。もう一度お試しください。"
+  "Could not complete setup. Please try again.": "初期設定を完了できませんでした。もう一度お試しください。",
+  "Your language level": "学習言語のレベル",
+  "Saved level for {language}": "{language}の保存済みレベル",
+  "Not set": "未設定",
+  "Changing this profile level does not change your word ratings.": "プロフィールのレベルを変更しても、単語の評価は変わりません。",
+  "Choose your profile level": "プロフィールのレベルを選択",
+  "Save level": "レベルを保存",
+  "Could not save your level. Please try again.": "レベルを保存できませんでした。もう一度お試しください。",
+  "Your level was saved, but no matching words were found. Check that the dictionary and level data have been imported.": "レベルは保存されましたが、該当する単語が見つかりませんでした。辞書とレベルデータが読み込まれているか確認してください。",
+  "Dismiss": "閉じる"
 }

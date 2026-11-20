@@ -7,6 +7,8 @@ import { StudyLanguageContext, studyLevels, type StudyLanguage } from "./utils/s
 export function StudyLanguageProvider({ children, accountControl }: { children: ReactNode; accountControl?: ReactNode }) {
   const { t } = useLanguage();
   const [language, setLanguage] = useState<StudyLanguage | null>(null);
+  const [levels, setLevels] = useState<Record<StudyLanguage, string | null>>({ ja: null, en: null });
+  const [noWords, setNoWords] = useState(false);
   const [onboardingRequired, setOnboardingRequired] = useState(false);
   const [selection, setSelection] = useState<StudyLanguage | null>(null);
   const [level, setLevel] = useState("");
@@ -29,6 +31,7 @@ export function StudyLanguageProvider({ children, accountControl }: { children: 
       if (profile.learning_language !== "ja" && profile.learning_language !== "en") throw new Error("Invalid learning language");
       if (active) {
         setLanguage(profile.learning_language);
+        setLevels({ ja: profile.levels?.ja ?? null, en: profile.levels?.en ?? null });
         setOnboardingRequired(profile.onboarding_required === true);
       }
     }).catch(() => { if (active) setLoadError("unavailable"); });
@@ -47,10 +50,47 @@ export function StudyLanguageProvider({ children, accountControl }: { children: 
         body: JSON.stringify(onboardingRequired ? { learning_language: next, level: selectedLevel || null } : { learning_language: next }),
       });
       if (!response.ok) throw new Error("Could not save profile");
+      if (onboardingRequired) {
+        const result = await response.json();
+        setLevels((previous) => ({ ...previous, [next]: selectedLevel || null }));
+        setNoWords(result.matched_words === 0);
+      }
       setLanguage(next);
       setOnboardingRequired(false);
       return true;
-    } catch { setSaveError(true); return false; }
+    } catch {
+      if (onboardingRequired) {
+        try {
+          const response = await loggedFetch("profile.read", new URL("profile", API_BASE_URL));
+          if (response.ok) {
+            const profile = await response.json();
+            if (profile.onboarding_required === false && (profile.learning_language === "ja" || profile.learning_language === "en")) {
+              setLanguage(profile.learning_language);
+              setLevels({ ja: profile.levels?.ja ?? null, en: profile.levels?.en ?? null });
+              setOnboardingRequired(false);
+              return true;
+            }
+          }
+        } catch { /* Keep the form available if the profile cannot be checked. */ }
+      }
+      setSaveError(true); return false;
+    }
+    finally { savingRef.current = false; setSaving(false); }
+  }
+
+  async function chooseLevel(nextLanguage: StudyLanguage, nextLevel: string | null) {
+    if (savingRef.current) return false;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      const response = await loggedFetch("profile.level", new URL("profile/level", API_BASE_URL), {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: nextLanguage, level: nextLevel }),
+      });
+      if (!response.ok) throw new Error("Could not save level");
+      setLevels((previous) => ({ ...previous, [nextLanguage]: nextLevel }));
+      return true;
+    } catch { return false; }
     finally { savingRef.current = false; setSaving(false); }
   }
 
@@ -90,7 +130,8 @@ export function StudyLanguageProvider({ children, accountControl }: { children: 
       </section>
     </div>
   </main>;
-  return <StudyLanguageContext.Provider value={{ language, chooseLanguage, saving, error: saveError }}>
+  return <StudyLanguageContext.Provider value={{ language, levels, chooseLanguage, chooseLevel, saving, error: saveError }}>
+    {noWords && <div role="alert" className="bg-amber-50 px-6 py-4 text-sm text-amber-900">{t("Your level was saved, but no matching words were found. Check that the dictionary and level data have been imported.")} <button className="underline" onClick={() => setNoWords(false)}>{t("Dismiss")}</button></div>}
     {children}
   </StudyLanguageContext.Provider>;
 }

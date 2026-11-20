@@ -72,11 +72,23 @@ def test_learning_language_is_saved_per_account(auth_setup):
     client, _db, key = auth_setup
     one, two = headers(token(key)), headers(token(key, sub="user_two"))
     assert client.get("/api/profile").status_code == 401
-    assert client.get("/api/profile", headers=one).json() == {"learning_language": "ja", "onboarding_required": True}
+    assert client.get("/api/profile", headers=one).json() == {"learning_language": "ja", "onboarding_required": True, "levels": {"ja": None, "en": None}}
     assert client.put("/api/profile", headers=one, json={"learning_language": "en"}).json() == {"learning_language": "en"}
-    assert client.get("/api/profile", headers=one).json() == {"learning_language": "en", "onboarding_required": False}
-    assert client.get("/api/profile", headers=two).json() == {"learning_language": "ja", "onboarding_required": True}
+    assert client.get("/api/profile", headers=one).json() == {"learning_language": "en", "onboarding_required": False, "levels": {"ja": None, "en": None}}
+    assert client.get("/api/profile", headers=two).json() == {"learning_language": "ja", "onboarding_required": True, "levels": {"ja": None, "en": None}}
     assert client.put("/api/profile", headers=two, json={"learning_language": "ja"}).status_code == 200
-    assert client.get("/api/profile", headers=two).json() == {"learning_language": "ja", "onboarding_required": False}
+    assert client.get("/api/profile", headers=two).json() == {"learning_language": "ja", "onboarding_required": False, "levels": {"ja": None, "en": None}}
     assert client.put("/api/profile", headers=one, json={"learning_language": "fr"}).status_code == 422
-    assert client.get("/api/profile", headers=one).json() == {"learning_language": "en", "onboarding_required": False}
+    assert client.get("/api/profile", headers=one).json() == {"learning_language": "en", "onboarding_required": False, "levels": {"ja": None, "en": None}}
+
+
+def test_profile_levels_are_validated_and_isolated(auth_setup):
+    client, _db, key = auth_setup
+    one, two = headers(token(key)), headers(token(key, sub="user_two"))
+    assert client.put("/api/profile/level", headers=one, json={"language": "ja", "level": "N4"}).status_code == 200
+    assert client.put("/api/profile/level", headers=one, json={"language": "en", "level": "A2"}).status_code == 200
+    assert client.put("/api/profile/level", headers=one, json={"language": "en", "level": "N4"}).status_code == 422
+    assert client.get("/api/profile", headers=one).json()["levels"] == {"ja": "N4", "en": "A2"}
+    assert client.get("/api/profile", headers=two).json()["levels"] == {"ja": None, "en": None}
+    assert client.put("/api/profile/level", headers=one, json={"language": "ja", "level": None}).status_code == 200
+    assert client.get("/api/profile", headers=one).json()["levels"] == {"ja": None, "en": "A2"}

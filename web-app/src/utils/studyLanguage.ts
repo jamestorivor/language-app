@@ -7,7 +7,9 @@ export const studyLevels: Record<StudyLanguage, readonly string[]> = {
 };
 export type StudyLanguageContextValue = {
   language: StudyLanguage;
+  levels: Record<StudyLanguage, string | null>;
   chooseLanguage: (value: StudyLanguage) => Promise<boolean>;
+  chooseLevel: (language: StudyLanguage, level: string | null) => Promise<boolean>;
   saving: boolean;
   error: boolean;
 };
